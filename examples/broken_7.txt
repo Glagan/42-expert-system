@@ -1,0 +1,6 @@
+# This example does not work
+
+A = B
+
+=A
+?B
