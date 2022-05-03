@@ -46,17 +46,11 @@ fn prepare_root_symbol(left: &str, right: &str) -> Result<(String, String), Stri
     Ok((left, right))
 }
 
-//               -symmetrical-
-//                v         v
-// symbol: (\s|!|\()*\w(\s|\()*
-//           ------symmetrical--------
-//           |         operator      |
-//           v         vvvvv         v
-// block: !*\(*{symbol}[+|^]{symbol}\)*
-fn parse_symbol(string: &str) -> Result<Box<Symbol>, String> {
+fn parse_symbol_block(string: &str) -> Result<Box<Symbol>, String> {
     // Initial state
+    let mut root_symbol = Symbol::new();
     let mut upper_symbols: Vec<Symbol> = vec![];
-    let mut current_symbol = Symbol::new();
+    let mut current_symbol = root_symbol;
     println!("parsing <{}>", string);
 
     // Parse
@@ -93,6 +87,9 @@ fn parse_symbol(string: &str) -> Result<Box<Symbol>, String> {
                 upper_symbols.push(current_symbol);
                 current_symbol = Symbol::new();
             } else if current_symbol.right.is_none() {
+                if current_symbol.operator.is_none() {
+                    return Err("Invalid NOT operator on incomplete symbol".to_string());
+                }
                 current_symbol.right = Some(Box::new(Symbol::operator(Operator::Not)));
                 upper_symbols.push(current_symbol);
                 current_symbol = Symbol::new();
@@ -146,19 +143,17 @@ fn parse_symbol(string: &str) -> Result<Box<Symbol>, String> {
     }
 
     // Return root symbol
-    if upper_symbols.is_empty() {
-        return Ok(Box::new(current_symbol));
-    }
-    let root_symbol = upper_symbols.first().unwrap();
-    Ok(Box::new(Symbol {
-        value: root_symbol.value,
-        left: root_symbol.left.clone(),
-        right: root_symbol.right.clone(),
-        operator: root_symbol.operator,
-    }))
+    return Ok(Box::new(root_symbol.clone()));
 }
 
 // Separate rule in two blocks and parse the two blocks individually later
+//               -symmetrical-
+//                v         v
+// symbol: (\s|!|\()*\w(\s|\()*
+//           ------symmetrical--------
+//           |         operator      |
+//           v         vvvvv         v
+// block: !*\(*{symbol}[+|^]{symbol}\)*
 // regex: ^\s*({symbol}|{block})\s*(<=>|=>)\s*({symbol}|{block})\s*(?:#.+)?$
 fn rule(i: &str) -> IResult<&str, (&str, &str, &str)> {
     let (input, (_, left, _, op, _, right, _, _)) = tuple((
@@ -259,8 +254,8 @@ impl Input {
                     let (left, right) = prepare_root_symbol(left, right)?;
                     let rule = Symbol {
                         value: None,
-                        left: Some(parse_symbol(&left)?),
-                        right: Some(parse_symbol(&right)?),
+                        left: Some(parse_symbol_block(&left)?),
+                        right: Some(parse_symbol_block(&right)?),
                         operator: if op == "=>" {
                             Some(Operator::Implies)
                         } else {
