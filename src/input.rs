@@ -53,18 +53,112 @@ fn prepare_root_symbol(left: &str, right: &str) -> Result<(String, String), Stri
 //           |         operator      |
 //           v         vvvvv         v
 // block: !*\(*{symbol}[+|^]{symbol}\)*
-fn parse_symbol(left: &str, op: &str, right: &str) -> Result<Symbol, String> {
-    // TODO
-    println!("parsing <{}> [{}] <{}>", left, op, right);
-    Ok(Symbol {
-        value: None,
-        left: None,
-        right: None,
-        operator: Operator::And,
-    })
+fn parse_symbol(string: &str) -> Result<Box<Symbol>, String> {
+    // Initial state
+    let mut upper_symbols: Vec<Symbol> = vec![];
+    let mut current_symbol = Symbol::new();
+    println!("parsing <{}>", string);
+
+    // Parse
+    for c in string.chars() {
+        if c == '(' {
+            // Open context on available symbol side
+            if current_symbol.left.is_none() {
+                current_symbol.left = Some(Box::new(Symbol::new()));
+                upper_symbols.push(current_symbol);
+                current_symbol = Symbol::new();
+            } else if current_symbol.right.is_none() {
+                current_symbol.right = Some(Box::new(Symbol::new()));
+                upper_symbols.push(current_symbol);
+                current_symbol = Symbol::new();
+            } else {
+                return Err("Invalid opening context on empty symbol".to_string());
+            }
+        } else if c == ')' {
+            // Close context by poping the last upper symbol
+            if upper_symbols.is_empty() {
+                return Err("Closing context on root symbol".to_string());
+            }
+            if current_symbol.left.is_some()
+                && current_symbol.right.is_none()
+                && current_symbol.operator.is_some()
+            {
+                return Err("Closing context on incomplete symbol".to_string());
+            }
+            current_symbol = upper_symbols.pop().unwrap();
+        } else if c == '!' {
+            // Open context on an available symbol side
+            if current_symbol.left.is_none() {
+                current_symbol.left = Some(Box::new(Symbol::operator(Operator::Not)));
+                upper_symbols.push(current_symbol);
+                current_symbol = Symbol::new();
+            } else if current_symbol.right.is_none() {
+                current_symbol.right = Some(Box::new(Symbol::operator(Operator::Not)));
+                upper_symbols.push(current_symbol);
+                current_symbol = Symbol::new();
+            } else {
+                return Err("Invalid NOT operator on empty symbol".to_string());
+            }
+        } else if c == '+' || c == '|' || c == '^' {
+            // Set the operator of the current symbol or create a new one
+            if current_symbol.operator.is_some() {
+                if current_symbol.left.is_some() && current_symbol.right.is_some() {
+                    // If the current symbol is full create new symbol with the nested previous
+                    let mut new_symbol = Symbol::new();
+                    new_symbol.left = Some(Box::new(current_symbol));
+                    new_symbol.operator = Symbol::match_operator(c);
+                    current_symbol = new_symbol;
+                    // Update last upper symbol left or right which was for the current symbol
+                    if !upper_symbols.is_empty() {
+                        let mut last = upper_symbols.last_mut().unwrap();
+                        if last.right.is_some() {
+                            last.right = Some(Box::new(current_symbol));
+                        } else if last.left.is_some() {
+                            last.left = Some(Box::new(current_symbol));
+                        } else {
+                            return Err("Error opening a new nested symbol on a full operator with an empty context".to_string());
+                        }
+                    }
+                } else {
+                    return Err("Operator on already set symbol".to_string());
+                }
+            }
+            current_symbol.operator = Symbol::match_operator(c);
+        } else if current_symbol.left.is_none() {
+            // If the current symbol has a Operator::Not
+            // -- set the value of the symbol
+            // Else create a symbol with a value on an opened side
+            if current_symbol.operator.is_some()
+                && current_symbol.operator.unwrap() == Operator::Not
+            {
+                current_symbol.value = Some(c);
+                if !upper_symbols.is_empty() {
+                    current_symbol = upper_symbols.pop().unwrap();
+                }
+            } else {
+                current_symbol.left = Some(Box::new(Symbol::unit(c)));
+            }
+        } else if current_symbol.right.is_none() {
+            current_symbol.right = Some(Box::new(Symbol::unit(c)));
+        } else {
+            return Err("Extraneous symbol with no operators or block".to_string());
+        }
+    }
+
+    // Return root symbol
+    if upper_symbols.is_empty() {
+        return Ok(Box::new(current_symbol));
+    }
+    let root_symbol = upper_symbols.first().unwrap();
+    Ok(Box::new(Symbol {
+        value: root_symbol.value,
+        left: root_symbol.left.clone(),
+        right: root_symbol.right.clone(),
+        operator: root_symbol.operator,
+    }))
 }
 
-// Separate rule in two blocks and parse the two blocks individually
+// Separate rule in two blocks and parse the two blocks individually later
 // regex: ^\s*({symbol}|{block})\s*(<=>|=>)\s*({symbol}|{block})\s*(?:#.+)?$
 fn rule(i: &str) -> IResult<&str, (&str, &str, &str)> {
     let (input, (_, left, _, op, _, right, _, _)) = tuple((
@@ -163,9 +257,18 @@ impl Input {
                 let result = rule(line);
                 if let Ok((_, (left, op, right))) = result {
                     let (left, right) = prepare_root_symbol(left, right)?;
-                    let symbol = parse_symbol(&left, op, &right)?;
-                    add_symbol(&mut input, &symbol);
-                    input.rules.push(symbol)
+                    let rule = Symbol {
+                        value: None,
+                        left: Some(parse_symbol(&left)?),
+                        right: Some(parse_symbol(&right)?),
+                        operator: if op == "=>" {
+                            Some(Operator::Implies)
+                        } else {
+                            Some(Operator::IfAndOnlyIf)
+                        },
+                    };
+                    add_symbol(&mut input, &rule);
+                    input.rules.push(rule)
                 }
                 // Parse initial facts if the rule parser doesn't match
                 else {
