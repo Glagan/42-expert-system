@@ -79,8 +79,8 @@ fn parse_symbol_block(string: &str) -> Result<Rc<RefCell<Symbol>>, String> {
             {
                 return Err("Closing context on incomplete symbol".to_string());
             }
-            let parent = current_symbol.borrow().parent.as_ref().unwrap();
-            current_symbol = Rc::clone(&parent);
+            let parent = Rc::clone(current_symbol.borrow().parent.as_ref().unwrap());
+            current_symbol = parent;
         } else if c == '!' {
             // Open context on an available symbol side
             if !current_symbol.borrow().has_left() {
@@ -108,12 +108,12 @@ fn parse_symbol_block(string: &str) -> Result<Rc<RefCell<Symbol>>, String> {
                     new_symbol.borrow_mut().left = Some(Rc::clone(&current_symbol));
                     new_symbol.borrow_mut().operator = Symbol::match_operator(c);
                     new_symbol.borrow_mut().parent =
-                        Some(Rc::clone(&current_symbol.borrow().parent.as_ref().unwrap()));
+                        Some(Rc::clone(current_symbol.borrow().parent.as_ref().unwrap()));
                     current_symbol.borrow_mut().parent = Some(Rc::clone(&new_symbol));
                     current_symbol = new_symbol;
                     // Update last upper symbol left or right which was for the current symbol
                     if current_symbol.borrow().has_parent() {
-                        let parent = current_symbol.borrow().parent.as_ref().unwrap();
+                        let parent = Rc::clone(current_symbol.borrow().parent.as_ref().unwrap());
                         if parent.borrow().has_right() {
                             parent.borrow_mut().right = Some(Rc::clone(&current_symbol));
                         } else if parent.borrow().has_left() {
@@ -137,15 +137,15 @@ fn parse_symbol_block(string: &str) -> Result<Rc<RefCell<Symbol>>, String> {
                 println!("Adding symbol of left side {}", string);
                 current_symbol.borrow_mut().value = Some(c);
                 if current_symbol.borrow().has_parent() {
-                    let parent = current_symbol.borrow().parent.as_ref().unwrap();
-                    current_symbol = Rc::clone(&parent);
+                    let parent = Rc::clone(current_symbol.borrow().parent.as_ref().unwrap());
+                    current_symbol = parent;
                 }
             } else {
                 current_symbol.borrow_mut().left = Some(Rc::new(RefCell::new(Symbol::unit(c))));
             }
         } else if !current_symbol.borrow().has_right() {
             if !current_symbol.borrow().has_operator() {
-                return Err("Missing operator for symbols".to_string());
+                return Err("Missing operator between symbols".to_string());
             }
             current_symbol.borrow_mut().right = Some(Rc::new(RefCell::new(Symbol::unit(c))));
         } else {
@@ -155,8 +155,8 @@ fn parse_symbol_block(string: &str) -> Result<Rc<RefCell<Symbol>>, String> {
 
     // Return root symbol
     while current_symbol.borrow().has_parent() {
-        let parent = current_symbol.borrow().parent.unwrap();
-        current_symbol = Rc::clone(&parent);
+        let parent = Rc::clone(current_symbol.borrow().parent.as_ref().unwrap());
+        current_symbol = parent;
     }
     Ok(current_symbol)
 }
