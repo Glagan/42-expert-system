@@ -1,4 +1,4 @@
-use crate::engine::{Operator, Symbol};
+use crate::symbol::{Operator, Symbol};
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_until1, take_while, take_while1},

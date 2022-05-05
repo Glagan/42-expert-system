@@ -2,9 +2,11 @@ use std::process;
 
 use clap::{arg, command};
 
-mod input;
-use input::Input;
 mod engine;
+mod input;
+use engine::Engine;
+use input::Input;
+mod symbol;
 
 fn main() {
     let matches = command!()
@@ -16,11 +18,17 @@ fn main() {
         )
         .get_matches();
 
+    // Parse input and convert the rules to a tree
     let input_file_path = matches.value_of("input_file").unwrap();
-    println!("Input file: {:#?}", input_file_path);
     let input = Input::new(input_file_path).unwrap_or_else(|error| {
         eprintln!("Failed to parse input file: {}", error);
         process::exit(1);
     });
-    println!("{:#?}", input);
+
+    // Create an inference engine for the Input and resolve all queries
+    let engine = Engine { input: input };
+    for query in &engine.input.queries {
+        let result = engine.resolve_query(query);
+        println!("Query [{}] result: {:#?}", query, result);
+    }
 }

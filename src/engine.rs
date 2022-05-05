@@ -1,82 +1,52 @@
-use std::{cell::RefCell, rc::Rc};
+use crate::input::Input;
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Operator {
-    Not,
-    And,
-    Or,
-    Xor,
-    Implies,
-    IfAndOnlyIf,
+#[derive(Debug)]
+#[allow(dead_code)]
+pub enum ResultStatus {
+    Success,
+    Ambiguous,
+    Failure,
 }
 
-#[derive(Clone, Debug)]
-pub struct Symbol {
-    pub value: Option<char>,
-    pub left: Option<Rc<RefCell<Symbol>>>,
-    pub right: Option<Rc<RefCell<Symbol>>>,
-    pub operator: Option<Operator>,
+#[derive(Debug)]
+pub struct QueryResult {
+    pub status: ResultStatus,
+    pub value: bool,
+    pub ambiguous_symbols: Vec<char>,
 }
 
-impl Symbol {
-    pub fn new() -> Symbol {
-        Symbol {
-            value: None,
-            left: None,
-            right: None,
-            operator: None,
+#[derive(Debug)]
+pub struct Engine {
+    pub input: Input,
+}
+
+impl Engine {
+    pub fn resolve_query(&self, query: &char) -> Result<QueryResult, String> {
+        // If the symbol doesn't exist anywhere in the input it's an error
+        // ? Add it to check in the parser instead of here ?
+        if !self.input.symbols.contains(query) {
+            return Err(format!(
+                "The symbol {} does not exists in the list of symbols.",
+                query
+            ));
         }
-    }
 
-    pub fn unit(value: char) -> Symbol {
-        Symbol {
-            value: Some(value),
-            left: None,
-            right: None,
-            operator: None,
+        // Resolve initial facts queries
+        if self.input.initial_facts.contains_key(query)
+            && *self.input.initial_facts.get(query).unwrap()
+        {
+            return Ok(QueryResult {
+                status: ResultStatus::Success,
+                value: true,
+                ambiguous_symbols: vec![],
+            });
         }
-    }
 
-    pub fn operator(operator: Operator) -> Symbol {
-        Symbol {
-            value: None,
-            left: None,
-            right: None,
-            operator: Some(operator),
-        }
-    }
-
-    pub fn match_operator(op: char) -> Option<Operator> {
-        if op == '+' {
-            return Some(Operator::And);
-        } else if op == '|' {
-            return Some(Operator::Or);
-        } else if op == '^' {
-            return Some(Operator::Xor);
-        }
-        None
-    }
-
-    pub fn has_value(&self) -> bool {
-        self.value.is_some()
-    }
-
-    pub fn has_left(&self) -> bool {
-        self.left.is_some()
-    }
-
-    pub fn has_right(&self) -> bool {
-        self.right.is_some()
-    }
-
-    pub fn has_operator(&self) -> bool {
-        self.operator.is_some()
-    }
-
-    pub fn operator_eq(&self, op: &Operator) -> bool {
-        if let Some(current_op) = &self.operator {
-            return current_op == op;
-        }
-        false
+        // TODO
+        Ok(QueryResult {
+            status: ResultStatus::Ambiguous,
+            value: false,
+            ambiguous_symbols: vec![],
+        })
     }
 }
