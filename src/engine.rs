@@ -12,7 +12,6 @@ pub enum Operator {
 
 #[derive(Clone, Debug)]
 pub struct Symbol {
-    pub parent: Option<Rc<RefCell<Symbol>>>,
     pub value: Option<char>,
     pub left: Option<Rc<RefCell<Symbol>>>,
     pub right: Option<Rc<RefCell<Symbol>>>,
@@ -22,7 +21,6 @@ pub struct Symbol {
 impl Symbol {
     pub fn new() -> Symbol {
         Symbol {
-            parent: None,
             value: None,
             left: None,
             right: None,
@@ -31,8 +29,7 @@ impl Symbol {
     }
 
     pub fn unit(value: char) -> Symbol {
-        Symbol {
-            parent: None,
+        Symbol { 
             value: Some(value),
             left: None,
             right: None,
@@ -41,8 +38,7 @@ impl Symbol {
     }
 
     pub fn operator(operator: Operator) -> Symbol {
-        Symbol {
-            parent: None,
+        Symbol { 
             value: None,
             left: None,
             right: None,
@@ -59,10 +55,6 @@ impl Symbol {
             return Some(Operator::Xor);
         }
         None
-    }
-
-    pub fn has_parent(&self) -> bool {
-        self.parent.is_some()
     }
 
     pub fn has_left(&self) -> bool {
