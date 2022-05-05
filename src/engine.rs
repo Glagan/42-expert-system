@@ -29,7 +29,7 @@ impl Symbol {
     }
 
     pub fn unit(value: char) -> Symbol {
-        Symbol { 
+        Symbol {
             value: Some(value),
             left: None,
             right: None,
@@ -38,7 +38,7 @@ impl Symbol {
     }
 
     pub fn operator(operator: Operator) -> Symbol {
-        Symbol { 
+        Symbol {
             value: None,
             left: None,
             right: None,
