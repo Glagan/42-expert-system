@@ -3,4 +3,4 @@
 A => B
 
 =A
-?#B # Oops, the queries are commented
+?#B # Oops, the queries are empty

@@ -54,7 +54,7 @@ fn parse_symbol_block(string: &str) -> Result<Rc<RefCell<Symbol>>, String> {
     println!("parsing <{}>", string);
 
     // Parse
-    for c in string.chars() {
+    for (i, c) in string.chars().enumerate() {
         if c == '(' {
             // Open context on available symbol side
             opened_context += 1;
@@ -65,28 +65,28 @@ fn parse_symbol_block(string: &str) -> Result<Rc<RefCell<Symbol>>, String> {
                 current_symbol = new_symbol;
             } else if !current_symbol.borrow().has_right() {
                 if !current_symbol.borrow().has_operator() {
-                    return Err("Opening context on a incomplete symbol".to_string());
+                    return Err(format!("Opening context on a incomplete symbol in block `{}` column {}", string, i + 1));
                 }
                 let new_symbol = Rc::new(RefCell::new(Symbol::new()));
                 current_symbol.borrow_mut().right = Some(Rc::clone(&new_symbol));
                 upper_symbols.push(Rc::clone(&current_symbol));
                 current_symbol = new_symbol;
             } else {
-                return Err("Invalid opening context on empty symbol".to_string());
+                return Err(format!("Invalid opening context on empty symbol in block `{}` column {}", string, i + 1));
             }
         } else if c == ')' {
             // Close context by poping the last upper symbol
             if upper_symbols.is_empty() {
-                return Err("Closing context on root symbol".to_string());
+                return Err(format!("Closing context on root symbol in block `{}` column {}", string, i + 1));
             }
             if current_symbol.borrow().has_left()
             && !current_symbol.borrow().has_right()
             && current_symbol.borrow().has_operator()
             {
-                return Err("Closing context on incomplete symbol".to_string());
+                return Err(format!("Closing context on incomplete symbol in block `{}` column {}", string, i + 1));
             }
             if !current_symbol.borrow().has_left() && !current_symbol.borrow().has_right() && !current_symbol.borrow().has_value() {
-                return Err("Unused context".to_string());
+                return Err(format!("Unused context in block `{}` column {}", string, i + 1));
             }
             opened_context -= 1;
             current_symbol = upper_symbols.pop().unwrap();
@@ -99,14 +99,14 @@ fn parse_symbol_block(string: &str) -> Result<Rc<RefCell<Symbol>>, String> {
                 current_symbol = new_symbol;
             } else if !current_symbol.borrow().has_right() {
                 if !current_symbol.borrow().has_operator() {
-                    return Err("Invalid NOT operator on incomplete symbol".to_string());
+                    return Err(format!("Invalid NOT operator on incomplete symbol in block `{}` column {}", string, i + 1));
                 }
                 let new_symbol = Rc::new(RefCell::new(Symbol::operator(Operator::Not)));
                 current_symbol.borrow_mut().right = Some(Rc::clone(&new_symbol));
                 upper_symbols.push(Rc::clone(&current_symbol));
                 current_symbol = new_symbol;
             } else {
-                return Err("Invalid NOT operator on empty symbol".to_string());
+                return Err(format!("Invalid NOT operator on empty symbol in block `{}` column {}", string, i + 1));
             }
         } else if c == '+' || c == '|' || c == '^' {
             // Set the operator of the current symbol or create a new one
@@ -125,15 +125,15 @@ fn parse_symbol_block(string: &str) -> Result<Rc<RefCell<Symbol>>, String> {
                         } else if last.borrow().has_left() {
                             last.borrow_mut().left = Some(Rc::clone(&current_symbol));
                         } else {
-                            return Err("Opening a new nested symbol on a full operator with an empty context".to_string());
+                            return Err(format!("Opening a new nested symbol on a full operator with an empty context in block `{}` column {}", string, i + 1));
                         }
                     }
                 } else {
-                    return Err("Operator on already set symbol".to_string());
+                    return Err(format!("Operator on already set symbol in block `{}` column {}", string, i + 1));
                 }
             } else {
                 if !current_symbol.borrow().has_left() {
-                    return Err("Adding operator to empty symbol".to_string());
+                    return Err(format!("Adding operator to empty symbol in block `{}` column {}", string, i + 1));
                 }
                 current_symbol.borrow_mut().operator = Symbol::match_operator(c);
             }
@@ -154,11 +154,11 @@ fn parse_symbol_block(string: &str) -> Result<Rc<RefCell<Symbol>>, String> {
             }
         } else if !current_symbol.borrow().has_right() {
             if !current_symbol.borrow().has_operator() {
-                return Err("Missing operator between symbols".to_string());
+                return Err(format!("Missing operator between symbols in block `{}` column {}", string, i + 1));
             }
             current_symbol.borrow_mut().right = Some(Rc::new(RefCell::new(Symbol::unit(c))));
         } else {
-            return Err("Extraneous symbol with no operators or block".to_string());
+            return Err(format!("Extraneous symbol with no operators or block in block `{}` column {}", string, i + 1));
         }
     }
 
@@ -167,12 +167,12 @@ fn parse_symbol_block(string: &str) -> Result<Rc<RefCell<Symbol>>, String> {
     if (!has_upper_symbols && current_symbol.borrow().has_left() && !current_symbol.borrow().has_operator()) ||
        (!has_upper_symbols && !current_symbol.borrow().has_left() && !current_symbol.borrow().has_right() && current_symbol.borrow().has_operator()) ||
        (has_upper_symbols && current_symbol.borrow().has_left() && !current_symbol.borrow().has_right() && current_symbol.borrow().has_operator()) {
-        return Err("Incomplete symbol".to_string());
+        return Err(format!("Incomplete symbol in block `{}`", string));
     }
 
     // Check contexts
     if opened_context != 0 {
-        return Err("Unclosed context".to_string());
+        return Err(format!("Unclosed context in block `{}`", string));
     }
 
     // Unshift the root symbol
