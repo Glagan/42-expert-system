@@ -1,6 +1,6 @@
 # This example does not work
 
-=> B # Missing left side of rule
+! => B
 
 =A
 ?B

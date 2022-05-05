@@ -2,5 +2,5 @@
 
 A => B
 
-#=A
+#=A # Oops, the initial facts are commented
 ?B
