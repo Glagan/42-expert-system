@@ -57,6 +57,10 @@ impl Symbol {
         None
     }
 
+    pub fn has_value(&self) -> bool {
+        self.value.is_some()
+    }
+
     pub fn has_left(&self) -> bool {
         self.left.is_some()
     }
