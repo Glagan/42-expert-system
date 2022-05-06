@@ -1,4 +1,5 @@
 use crate::symbol::{Operator, Symbol};
+use colored::Colorize;
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_until1, take_while, take_while1},
@@ -17,6 +18,7 @@ pub struct Input {
     pub symbol_values: HashMap<char, bool>,
     pub initial_facts: HashMap<char, bool>,
     pub queries: Vec<char>,
+    pub warnings: Vec<String>,
 }
 
 fn remove_whitespaces(string: &str) -> String {
@@ -302,6 +304,7 @@ impl Input {
             symbol_values: HashMap::new(),
             initial_facts: HashMap::new(),
             queries: vec![],
+            warnings: vec![],
         };
         let mut parsed_initial_facts = false;
         let mut parsed_queries = false;
@@ -338,8 +341,16 @@ impl Input {
             if parsed_initial_facts {
                 let result = queries(line);
                 if let Ok((_, queries)) = result {
-                    // TODO warning for duplicate queries ?
-                    input.queries = queries;
+                    // Check if each queries are not duplicate and exist in rules or initial facts
+                    for query in queries.iter() {
+                        if input.queries.contains(query) {
+                            input.warnings.push(format!("Duplicate query for symbol {}", query));
+                        } else if !input.symbols.contains(query) {
+                            input.warnings.push(format!("Query for missing symbol {}", query));
+                        } else {
+                            input.queries.push(*query);
+                        }
+                    }
                     parsed_queries = true
                 } else {
                     let error = result.unwrap_err();
@@ -378,9 +389,13 @@ impl Input {
                     // Else add them to the Input
                     let (_, initial_facts) = result.unwrap();
                     for symbol in initial_facts {
-                        // TODO warning for duplicate initial facts ?
-                        input.initial_facts.entry(symbol).or_insert(true);
-                        *input.symbol_values.entry(symbol).or_insert(true) = true;
+                    // Check if each initial facts are not duplicated
+                        if input.initial_facts.contains_key(&symbol) {
+                            input.warnings.push(format!("Duplicate initial fact for symbol {}", symbol));
+                        } else {
+                            input.initial_facts.entry(symbol).or_insert(true);
+                            *input.symbol_values.entry(symbol).or_insert(true) = true;
+                        }
                     }
                     parsed_initial_facts = true;
                 }
@@ -406,8 +421,6 @@ impl Input {
         if !self.initial_facts.keys().all(char::is_ascii_uppercase) {
             return Err("Initial facts can only be uppercase letters".to_string());
         }
-        // Check initial fact symbols exist in list of all symbols => warning ?
-        // Check the query symbols exist in list of all symbols => warning ?
         // Check for ambiguous symbols ?
         Ok(())
     }
@@ -421,6 +434,12 @@ impl Input {
         let input = Input::parse_content(&content.unwrap())?;
         input.check()?;
         Ok(input)
+    }
+
+    pub fn show_warnings(&self) {
+        for warning in self.warnings.iter() {
+            println!("{}", warning.yellow());
+        }
     }
 }
 

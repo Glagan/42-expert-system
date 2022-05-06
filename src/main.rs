@@ -4,6 +4,7 @@ use clap::{arg, command};
 
 mod engine;
 mod input;
+use colored::Colorize;
 use engine::Engine;
 use input::Input;
 mod symbol;
@@ -24,11 +25,26 @@ fn main() {
         eprintln!("Failed to parse input file: {}", error);
         process::exit(1);
     });
+    input.show_warnings();
 
     // Create an inference engine for the Input and resolve all queries
     let engine = Engine { input: input };
     for query in &engine.input.queries {
         let result = engine.resolve_query(query);
-        println!("Query [{}] result: {:#?}", query, result);
+        if let Ok(result) = result {
+            println!(
+                "{}{} {}",
+                "?".normal().on_purple(),
+                format!("{}", query).bright_cyan().on_purple(),
+                result
+            );
+        } else {
+            println!(
+                "{}{} {}",
+                "?".normal().on_purple(),
+                format!("{}", query).bright_cyan().on_purple(),
+                result.unwrap_err()
+            );
+        }
     }
 }

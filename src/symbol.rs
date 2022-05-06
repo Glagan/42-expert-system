@@ -79,4 +79,38 @@ impl Symbol {
         }
         false
     }
+
+    fn symbol_has_symbol(symbol: &Rc<RefCell<Symbol>>, query: &char) -> bool {
+        if let Some(value) = &RefCell::borrow(&symbol).value {
+            if *value == *query {
+                return true;
+            }
+        }
+        let mut side_result = false;
+        if let Some(left) = &RefCell::borrow(&symbol).left {
+            side_result = Symbol::symbol_has_symbol(left, query);
+        }
+        if !side_result {
+            if let Some(right) = &RefCell::borrow(&symbol).right {
+                side_result = Symbol::symbol_has_symbol(right, query);
+            }
+        }
+        side_result
+    }
+
+    pub fn imply_symbol(&self, query: &char) -> bool {
+        if let Some(right) = &self.right {
+            if Symbol::symbol_has_symbol(right, query) {
+                return true;
+            }
+        }
+        if self.operator_eq(&Operator::IfAndOnlyIf) {
+            if let Some(left) = &self.left {
+                if Symbol::symbol_has_symbol(left, query) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
 }
