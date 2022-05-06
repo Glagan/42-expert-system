@@ -81,17 +81,17 @@ impl Symbol {
     }
 
     fn symbol_has_symbol(symbol: &Rc<RefCell<Symbol>>, query: &char) -> bool {
-        if let Some(value) = &RefCell::borrow(&symbol).value {
+        if let Some(value) = &RefCell::borrow(symbol).value {
             if *value == *query {
                 return true;
             }
         }
         let mut side_result = false;
-        if let Some(left) = &RefCell::borrow(&symbol).left {
+        if let Some(left) = &RefCell::borrow(symbol).left {
             side_result = Symbol::symbol_has_symbol(left, query);
         }
         if !side_result {
-            if let Some(right) = &RefCell::borrow(&symbol).right {
+            if let Some(right) = &RefCell::borrow(symbol).right {
                 side_result = Symbol::symbol_has_symbol(right, query);
             }
         }
@@ -115,15 +115,15 @@ impl Symbol {
     }
 
     fn symbol_has_operator(symbol: &Rc<RefCell<Symbol>>, op: &Operator) -> bool {
-        if RefCell::borrow(&symbol).operator_eq(op) {
+        if RefCell::borrow(symbol).operator_eq(op) {
             return true;
         }
         let mut side_result = false;
-        if let Some(left) = &RefCell::borrow(&symbol).left {
+        if let Some(left) = &RefCell::borrow(symbol).left {
             side_result = Symbol::symbol_has_operator(left, op);
         }
         if !side_result {
-            if let Some(right) = &RefCell::borrow(&symbol).right {
+            if let Some(right) = &RefCell::borrow(symbol).right {
                 side_result = Symbol::symbol_has_operator(right, op);
             }
         }

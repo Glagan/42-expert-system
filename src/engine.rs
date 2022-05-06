@@ -21,17 +21,15 @@ impl fmt::Display for QueryResult {
                         .iter()
                         .map(|c| format!("{}", c))
                         .collect::<Vec<String>>()
-                        .join(&", ")
+                        .join(", ")
                 )
             } else {
                 write!(f, "{}", "ambiguous".normal().on_yellow())
             }
+        } else if self.value {
+            write!(f, "{}", "true".normal().on_green())
         } else {
-            if self.value {
-                write!(f, "{}", "true".normal().on_green())
-            } else {
-                write!(f, "{}", "false".normal().on_red())
-            }
+            write!(f, "{}", "false".normal().on_red())
         }
     }
 }

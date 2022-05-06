@@ -322,16 +322,16 @@ impl Input {
 
         fn add_symbol(input: &mut Input, symbol: &Symbol) {
             if let Some(value) = &symbol.value {
-                if !input.symbols.contains(&value) {
+                if !input.symbols.contains(value) {
                     input.symbols.push(*value);
                 }
                 input.symbol_values.entry(*value).or_insert(false);
             }
             if let Some(left) = &symbol.left {
-                add_symbol(input, &RefCell::borrow(&left));
+                add_symbol(input, &RefCell::borrow(left));
             }
             if let Some(right) = &symbol.right {
-                add_symbol(input, &RefCell::borrow(&right));
+                add_symbol(input, &RefCell::borrow(right));
             }
         }
 
