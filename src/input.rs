@@ -169,11 +169,17 @@ fn parse_symbol_block(string: &str) -> Result<Rc<RefCell<Symbol>>, String> {
                 }
             } else {
                 if !RefCell::borrow(&current_symbol).has_left() {
-                    return Err(format!(
-                        "Adding operator to empty symbol in block `{}` column {}",
-                        string,
-                        i + 1
-                    ));
+                    if RefCell::borrow(&current_symbol).has_value() {
+                        let value =RefCell::borrow(&current_symbol).value.unwrap();
+                        current_symbol.borrow_mut().left = Some(Rc::new(RefCell::new(Symbol::unit(value))));
+                        current_symbol.borrow_mut().value= None;            
+                    } else {
+                        return Err(format!(
+                            "Adding operator to empty symbol in block `{}` column {}",
+                            string,
+                            i + 1
+                        ));
+                    }
                 }
                 current_symbol.borrow_mut().operator = Symbol::match_operator(c);
             }
@@ -187,6 +193,11 @@ fn parse_symbol_block(string: &str) -> Result<Rc<RefCell<Symbol>>, String> {
                     let last = upper_symbols.pop().unwrap();
                     current_symbol = Rc::clone(&last);
                 }
+            } else if !RefCell::borrow(&current_symbol).has_value() &&
+                    !RefCell::borrow(&current_symbol).has_left() &&
+                    !RefCell::borrow(&current_symbol).has_right() &&
+                    !RefCell::borrow(&current_symbol).has_operator() {
+                current_symbol.borrow_mut().value = Some(c);
             } else {
                 current_symbol.borrow_mut().left = Some(Rc::new(RefCell::new(Symbol::unit(c))));
             }
@@ -345,10 +356,11 @@ impl Input {
                     for query in queries.iter() {
                         if input.queries.contains(query) {
                             input.warnings.push(format!("Duplicate query for symbol {}", query));
-                        } else if !input.symbols.contains(query) {
-                            input.warnings.push(format!("Query for missing symbol {}", query));
                         } else {
                             input.queries.push(*query);
+                        }
+                        if !input.symbols.contains(query) {
+                            input.warnings.push(format!("Query for missing symbol {}", query));
                         }
                     }
                     parsed_queries = true
@@ -411,7 +423,7 @@ impl Input {
         Ok(input)
     }
 
-    fn check(&self) -> Result<(), String> {
+    fn check(&mut self) -> Result<(), String> {
         if self.queries.is_empty() {
             return Err("Queries can't be empty".to_string());
         }
@@ -421,7 +433,15 @@ impl Input {
         if !self.initial_facts.keys().all(char::is_ascii_uppercase) {
             return Err("Initial facts can only be uppercase letters".to_string());
         }
-        // Check for ambiguous symbols ?
+        for rule in self.rules.iter() {
+            if rule.is_infinite() {
+                return Err(format!("Rule {:?} is infinite", rule));
+            }
+            if rule.is_ambiguous() {
+                // TODO Check if the ambiguousness is real by checking initial facts
+                self.warnings.push(format!("Rule {:?} is ambiguous", rule));
+            }
+        }
         Ok(())
     }
 
@@ -431,14 +451,14 @@ impl Input {
             return Err(e.to_string());
         }
 
-        let input = Input::parse_content(&content.unwrap())?;
+        let mut input = Input::parse_content(&content.unwrap())?;
         input.check()?;
         Ok(input)
     }
 
     pub fn show_warnings(&self) {
         for warning in self.warnings.iter() {
-            println!("{}", warning.yellow());
+            println!("{} {}", "!".red().on_yellow(), warning.yellow());
         }
     }
 }

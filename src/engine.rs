@@ -1,43 +1,37 @@
 use crate::{input::Input, symbol::Symbol};
 use colored::Colorize;
-use std::fmt;
-
-#[derive(Debug)]
-#[allow(dead_code)]
-pub enum ResultStatus {
-    Success,
-    Ambiguous,
-    Failure,
-}
+use std::{cell::RefCell, fmt};
 
 #[derive(Debug)]
 pub struct QueryResult {
-    pub status: ResultStatus,
     pub value: bool,
+    pub ambiguous: bool,
     pub ambiguous_symbols: Vec<char>,
 }
 
 impl fmt::Display for QueryResult {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.status {
-            ResultStatus::Success => {
-                if self.value {
-                    write!(f, "{}", "true".normal().on_green())
-                } else {
-                    write!(f, "{}", "false".normal().on_red())
-                }
+        if self.ambiguous {
+            if !self.ambiguous_symbols.is_empty() {
+                write!(
+                    f,
+                    "{} because of symbols {}",
+                    "ambiguous".normal().on_yellow(),
+                    self.ambiguous_symbols
+                        .iter()
+                        .map(|c| format!("{}", c))
+                        .collect::<Vec<String>>()
+                        .join(&", ")
+                )
+            } else {
+                write!(f, "{}", "ambiguous".normal().on_yellow())
             }
-            ResultStatus::Ambiguous => write!(
-                f,
-                "{} because of symbols {}",
-                "ambiguous".normal().on_yellow(),
-                self.ambiguous_symbols
-                    .iter()
-                    .map(|c| format!("{}", c))
-                    .collect::<Vec<String>>()
-                    .join(&", ")
-            ),
-            ResultStatus::Failure => write!(f, "{} to resolve value", "failed".normal().on_red(),),
+        } else {
+            if self.value {
+                write!(f, "{}", "true".normal().on_green())
+            } else {
+                write!(f, "{}", "false".normal().on_red())
+            }
         }
     }
 }
@@ -64,20 +58,46 @@ impl Engine {
             && *self.input.initial_facts.get(query).unwrap()
         {
             return Ok(QueryResult {
-                status: ResultStatus::Success,
                 value: true,
+                ambiguous: false,
                 ambiguous_symbols: vec![],
             });
         }
 
         // Get the list of rules that can imply the query
         let rules = self.get_rules(query);
-        println!("Rules {:#?}", rules);
-
-        Ok(QueryResult {
-            status: ResultStatus::Success,
+        let mut best_query_result = QueryResult {
             value: false,
+            ambiguous: false,
             ambiguous_symbols: vec![],
-        })
+        };
+        for rule in rules.iter() {
+            if let Some(symbol) = &rule.left {
+                if RefCell::borrow(symbol).has_value() {
+                    // Simple rule
+                    best_query_result.value = self
+                        .input
+                        .initial_facts
+                        .contains_key(&RefCell::borrow(symbol).value.unwrap());
+                    if best_query_result.value {
+                        return Ok(best_query_result);
+                    } else {
+                        // TODO Resolve symbol value with resolve_query, see below vvv
+                    }
+                }
+            } else {
+                // TODO Travel to a leaf, set the initial state of QueryResult by calculating it
+                // TODO > A symbol value is true if inside the initial facts
+                // TODO > Else call resolve_query recursively for the symbol value (and memoize it' value ?)
+                // TODO Add a `visited` flag to avoid infinite rules (return an error)
+                // TODO On operator, apply a function on the "leaf" of both sides
+            }
+            if rule.is_ambiguous() {
+                best_query_result.ambiguous = true;
+            }
+        }
+
+        // Return the best rule (either ambiguous or false)
+        Ok(best_query_result)
     }
 }

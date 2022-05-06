@@ -113,4 +113,67 @@ impl Symbol {
         }
         false
     }
+
+    fn symbol_has_operator(symbol: &Rc<RefCell<Symbol>>, op: &Operator) -> bool {
+        if RefCell::borrow(&symbol).operator_eq(op) {
+            return true;
+        }
+        let mut side_result = false;
+        if let Some(left) = &RefCell::borrow(&symbol).left {
+            side_result = Symbol::symbol_has_operator(left, op);
+        }
+        if !side_result {
+            if let Some(right) = &RefCell::borrow(&symbol).right {
+                side_result = Symbol::symbol_has_operator(right, op);
+            }
+        }
+        side_result
+    }
+
+    pub fn is_ambiguous(&self) -> bool {
+        if let Some(right) = &self.right {
+            if Symbol::symbol_has_operator(right, &Operator::Or) {
+                return true;
+            }
+        }
+        if self.operator_eq(&Operator::IfAndOnlyIf) {
+            if let Some(left) = &self.left {
+                if Symbol::symbol_has_operator(left, &Operator::Or) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    fn list_of_symbols(&self) -> Vec<char> {
+        let mut symbols = vec![];
+        if let Some(value) = &self.value {
+            symbols.push(*value)
+        }
+        if let Some(left) = &self.left {
+            let left_symbols = RefCell::borrow(left).list_of_symbols();
+            symbols = [symbols, left_symbols].concat();
+        }
+        if let Some(right) = &self.right {
+            let right_symbols = RefCell::borrow(right).list_of_symbols();
+            symbols = [symbols, right_symbols].concat();
+        }
+        symbols
+    }
+
+    pub fn is_infinite(&self) -> bool {
+        if let Some(left) = &self.left {
+            if let Some(right) = &self.right {
+                let left_symbols = RefCell::borrow(left).list_of_symbols();
+                let right_symbols = RefCell::borrow(right).list_of_symbols();
+                for right_symbol in right_symbols.iter() {
+                    if left_symbols.contains(right_symbol) {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
 }
