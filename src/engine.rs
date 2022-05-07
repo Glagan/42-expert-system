@@ -41,7 +41,7 @@ impl fmt::Display for QueryResult {
 pub struct Engine {
     pub input: Input,
     memoized_queries: HashMap<char, QueryResult>,
-    _resolving_rules: Vec<usize>,
+    resolving_rules: RefCell<Vec<usize>>,
 }
 
 impl Engine {
@@ -49,18 +49,8 @@ impl Engine {
         Engine {
             input,
             memoized_queries: HashMap::new(),
-            _resolving_rules: vec![],
+            resolving_rules: RefCell::new(vec![]),
         }
-    }
-
-    fn get_rules(&self, query: &char) -> Vec<Symbol> {
-        let mut rules: Vec<Symbol> = vec![];
-        for rule in self.input.rules.iter() {
-            if rule.imply_symbol(query) {
-                rules.push(rule.clone());
-            }
-        }
-        rules
     }
 
     fn resolve_unit(&self, unit: &char) -> Result<QueryResult, String> {
@@ -203,13 +193,36 @@ impl Engine {
             });
         }
 
-        // Get the list of rules that can imply the query
-        let rules = self.get_rules(query);
+        // Helper function this is called twice
+        let remove_pending_rule = |index: usize| {
+            let rule_index = self
+                .resolving_rules
+                .borrow()
+                .iter()
+                .position(|i| *i == index)
+                .unwrap();
+            self.resolving_rules.borrow_mut().remove(rule_index);
+        };
+
+        // The list of used rules are filtered inside the loop to get the correct index for the rule
+        let mut encountered_recursive_rule = false;
         let mut best_query_result: Option<QueryResult> = None;
-        for rule in rules.iter() {
-            // TODO check if rule is currently being resolved to avoid infinite loops ?
+        for (index, rule) in self.input.rules.iter().enumerate() {
+            // Only select rules that are useful to the current query
+            if !rule.imply_symbol(query) {
+                continue;
+            }
+            // Check if the rule is already being resolved to avoid infinite recursion
+            // -- it will use another rule for the query if possible
+            if self.resolving_rules.borrow().contains(&index) {
+                encountered_recursive_rule = true;
+                continue;
+            }
+            self.resolving_rules.borrow_mut().push(index);
+            // Resolve the rule -- errors are handled the same way in each functions and goes "up" to the root call
             let rule_result = self.resolve_rule(rule)?;
             if rule_result.value {
+                remove_pending_rule(index);
                 return Ok(rule_result);
             }
             // Set best_query_result or update it to the less ambiguous one
@@ -222,10 +235,14 @@ impl Engine {
             } else {
                 best_query_result = Some(rule_result);
             }
+            remove_pending_rule(index);
         }
 
         // Return the best rule (either ambiguous or false)
         if best_query_result.is_none() {
+            if encountered_recursive_rule {
+                return Err("Infinite rule".to_string());
+            }
             return Ok(QueryResult {
                 value: false,
                 ambiguous: false,
