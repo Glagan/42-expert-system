@@ -3,6 +3,8 @@
 ## Resources
 
 * https://en.wikipedia.org/wiki/Expert_system
+* https://en.wikipedia.org/wiki/Propositional_calculus
+* Inference Engine
     * https://en.wikipedia.org/wiki/Inference_engine
     * https://en.wikipedia.org/wiki/Backward_chaining
-* https://en.wikipedia.org/wiki/Propositional_calculus
+	* https://en.wikipedia.org/wiki/SLD_resolution
