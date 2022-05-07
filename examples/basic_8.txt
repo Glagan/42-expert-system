@@ -1,0 +1,7 @@
+# This example "works" but has an infinite rule
+
+A => B
+B => A
+
+=
+?AB
