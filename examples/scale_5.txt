@@ -1,0 +1,7 @@
+# This example works
+
+B => A 
+C => A 
+
+=
+?A

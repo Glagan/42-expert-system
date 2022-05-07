@@ -1,0 +1,6 @@
+# This example works
+
+B + !C => A 
+
+=BC
+?A
