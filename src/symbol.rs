@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub enum Operator {
     Not,
     And,

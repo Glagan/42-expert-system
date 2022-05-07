@@ -143,21 +143,37 @@ fn parse_symbol_block(string: &str) -> Result<Rc<RefCell<Symbol>>, String> {
         } else if c == '+' || c == '|' || c == '^' {
             // Set the operator of the current symbol or create a new one
             if RefCell::borrow(&current_symbol).has_operator() {
-                if RefCell::borrow(&current_symbol).has_left() && RefCell::borrow(&current_symbol).has_right() {
+                if RefCell::borrow(&current_symbol).has_left() && RefCell::borrow(&current_symbol).has_right() { 
                     // If the current symbol is full create new symbol with the nested previous
-                    let new_symbol = Rc::new(RefCell::new(Symbol::new()));
-                    new_symbol.borrow_mut().left = Some(Rc::clone(&current_symbol));
-                    new_symbol.borrow_mut().operator = Symbol::match_operator(c);
-                    current_symbol = new_symbol;
-                    // Update last upper symbol left or right which was for the current symbol
-                    if !upper_symbols.is_empty() {
-                        let last = upper_symbols.last().unwrap();
-                        if RefCell::borrow(last).has_right() {
-                            last.borrow_mut().right = Some(Rc::clone(&current_symbol));
-                        } else if RefCell::borrow(last).has_left() {
-                            last.borrow_mut().left = Some(Rc::clone(&current_symbol));
-                        } else {
-                            return Err(format!("Opening a new nested symbol on a full operator with an empty context in block `{}` column {}", string, i + 1));
+                    // -- Check for operator priority
+                    let new_operator = Symbol::match_operator(c).unwrap();
+                    // -- If an operator has "more" priority
+                    // -- the right side of the current symbol is inserted on a new symbol with the new operator
+                    // -- and the new nested symbol is set as the current symbol
+                    if new_operator < RefCell::borrow(&current_symbol).operator.unwrap() { 
+                        let new_symbol = Rc::new(RefCell::new(Symbol::new()));
+                        new_symbol.borrow_mut().left = Some(Rc::clone(&RefCell::borrow(&current_symbol).right.as_ref().unwrap()));
+                        new_symbol.borrow_mut().operator = Some(new_operator);
+                        current_symbol.borrow_mut().right = Some(Rc::clone(&new_symbol));
+                        upper_symbols.push(Rc::clone(&current_symbol));
+                        current_symbol = new_symbol;
+                    }
+                    // -- Else a new symbol is created and the previous one is added on the left side of the new one
+                    else {
+                        let new_symbol = Rc::new(RefCell::new(Symbol::new()));
+                        new_symbol.borrow_mut().left = Some(Rc::clone(&current_symbol));
+                        new_symbol.borrow_mut().operator = Some(new_operator);
+                        current_symbol = new_symbol;
+                        // Update last upper symbol left or right which was for the current symbol
+                        if !upper_symbols.is_empty() {
+                            let last = upper_symbols.last().unwrap();
+                            if RefCell::borrow(last).has_right() {
+                                last.borrow_mut().right = Some(Rc::clone(&current_symbol));
+                            } else if RefCell::borrow(last).has_left() {
+                                last.borrow_mut().left = Some(Rc::clone(&current_symbol));
+                            } else {
+                                return Err(format!("Opening a new nested symbol on a full operator with an empty context in block `{}` column {}", string, i + 1));
+                            }
                         }
                     }
                 } else {
@@ -438,7 +454,6 @@ impl Input {
                 return Err(format!("Rule {:?} is infinite", rule));
             }
             if rule.is_ambiguous() {
-                // TODO Check if the ambiguousness is real by checking initial facts
                 self.warnings.push(format!("Rule {:?} is ambiguous", rule));
             }
         }
