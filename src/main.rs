@@ -28,7 +28,7 @@ fn main() {
     input.show_warnings();
 
     // Create an inference engine for the Input and resolve all queries
-    let engine = Engine { input };
+    let engine = Engine::new(input);
     for query in &engine.input.queries {
         let result = engine.resolve_query(query);
         if let Ok(result) = result {
