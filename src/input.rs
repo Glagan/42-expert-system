@@ -35,7 +35,7 @@ fn is_only_valid_characters(string: &str) -> Result<(), String> {
             || c == '('
             || c == ')'
     }) {
-        return Err("Invalid characters in Symbol".to_string());
+        return Err("Invalid characters in Symbol, only uppercase letters and operators are allowed".to_string());
     }
     Ok(())
 }
@@ -48,7 +48,7 @@ fn prepare_root_symbol(left: &str, right: &str) -> Result<(String, String), Stri
     Ok((left, right))
 }
 
-fn parse_symbol_block(string: &str) -> Result<Rc<RefCell<Symbol>>, String> {
+fn parse_symbol_block(string: &str, is_conclusion: bool) -> Result<Rc<RefCell<Symbol>>, String> {
     // Initial state
     let mut opened_context = 0;
     let mut upper_symbols: Vec<Rc<RefCell<Symbol>>> = vec![];
@@ -141,6 +141,9 @@ fn parse_symbol_block(string: &str) -> Result<Rc<RefCell<Symbol>>, String> {
                 ));
             }
         } else if c == '+' || c == '|' || c == '^' {
+            if is_conclusion && (c == '|' || c == '^') {
+                return Err(format!("Unallowed Operator in conclusion `{}` column {}", string, i + 1));
+            }
             // Set the operator of the current symbol or create a new one
             if RefCell::borrow(&current_symbol).has_operator() {
                 if RefCell::borrow(&current_symbol).has_left() && RefCell::borrow(&current_symbol).has_right() { 
@@ -392,8 +395,8 @@ impl Input {
                     let (left, right) = prepare_root_symbol(left, right)?;
                     let rule = Symbol {
                         value: None,
-                        left: Some(parse_symbol_block(&left)?),
-                        right: Some(parse_symbol_block(&right)?),
+                        left: Some(parse_symbol_block(&left, false)?),
+                        right: Some(parse_symbol_block(&right, true)?),
                         operator: if op == "=>" {
                             Some(Operator::Implies)
                         } else {
@@ -476,119 +479,131 @@ impl Input {
             println!("{} {}", "!".red().on_yellow(), warning.yellow());
         }
     }
+
+    pub fn show_initial_facts(&self) {
+        print!("{}  ", "=".normal().on_purple());
+        if !self.initial_facts.is_empty() {
+            for (symbol, _) in self.initial_facts.iter() {
+                print!("{}", format!("{}", symbol).normal().on_green());
+            }
+        } else {
+            print!("No initial facts");
+        }
+        println!();
+    }
 }
 
 #[test]
 fn handle_parsing_error_1() {
-    let result = parse_symbol_block("(");
+    let result = parse_symbol_block("(", false);
     assert!(result.is_err())
 }
 
 #[test]
 fn handle_parsing_error_2() {
-    let result = parse_symbol_block(")");
+    let result = parse_symbol_block(")", false);
     assert!(result.is_err())
 }
 
 #[test]
 fn handle_parsing_error_3() {
-    let result = parse_symbol_block("!");
+    let result = parse_symbol_block("!", false);
     assert!(result.is_err())
 }
 
 #[test]
 fn handle_parsing_error_4() {
-    let result = parse_symbol_block("+");
+    let result = parse_symbol_block("+", false);
     assert!(result.is_err())
 }
 
 #[test]
 fn handle_parsing_error_5() {
-    let result = parse_symbol_block("A+");
+    let result = parse_symbol_block("A+", false);
     assert!(result.is_err())
 }
 
 #[test]
 fn handle_parsing_error_6() {
-    let result = parse_symbol_block("+A");
+    let result = parse_symbol_block("+A", false);
     assert!(result.is_err())
 }
 
 #[test]
 fn handle_parsing_error_7() {
-    let result = parse_symbol_block("()");
+    let result = parse_symbol_block("()", false);
     assert!(result.is_err())
 }
 
 #[test]
 fn handle_parsing_error_8() {
-    let result = parse_symbol_block("(A+)");
+    let result = parse_symbol_block("(A+)", false);
     assert!(result.is_err())
 }
 
 #[test]
 fn handle_parsing_error_9() {
-    let result = parse_symbol_block("!()");
+    let result = parse_symbol_block("!()", false);
     assert!(result.is_err())
 }
 
 #[test]
 fn handle_parsing_error_10() {
     // Any other characters than operators or symbols should already be removed when calling this function
-    let result = parse_symbol_block("A | B");
+    let result = parse_symbol_block("A | B", false);
     assert!(result.is_err())
 }
 
 #[test]
 fn handle_parsing_error_11() {
-    let result = parse_symbol_block("!(A+)");
+    let result = parse_symbol_block("!(A+)", false);
     assert!(result.is_err())
 }
 
 #[test]
 fn handle_parsing_success_1() {
-    let result = parse_symbol_block("A");
+    let result = parse_symbol_block("A", false);
     assert!(result.is_ok())
 }
 
 #[test]
 fn handle_parsing_success_2() {
-    let result = parse_symbol_block("A+B");
+    let result = parse_symbol_block("A+B", false);
     assert!(result.is_ok())
 }
 
 #[test]
 fn handle_parsing_success_3() {
-    let result = parse_symbol_block("(A+B)^C");
+    let result = parse_symbol_block("(A+B)^C", false);
     assert!(result.is_ok())
 }
 
 #[test]
 fn handle_parsing_success_4() {
-    let result = parse_symbol_block("A+(B+C)+D");
+    let result = parse_symbol_block("A+(B+C)+D", false);
     assert!(result.is_ok())
 }
 
 #[test]
 fn handle_parsing_success_5() {
-    let result = parse_symbol_block("!A");
+    let result = parse_symbol_block("!A", false);
     assert!(result.is_ok())
 }
 
 #[test]
 fn handle_parsing_success_6() {
-    let result = parse_symbol_block("!(A)");
+    let result = parse_symbol_block("!(A)", false);
     assert!(result.is_ok())
 }
 
 #[test]
 fn handle_parsing_success_7() {
-    let result = parse_symbol_block("!(A+B)");
+    let result = parse_symbol_block("!(A+B)", false);
     assert!(result.is_ok())
 }
 
 #[test]
 fn handle_parsing_success_8() {
-    let result = parse_symbol_block("(F^G)|(T+I)");
+    let result = parse_symbol_block("(F^G)|(T+I)", false);
     assert!(result.is_ok())
 }
