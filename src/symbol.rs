@@ -1,4 +1,8 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{
+    cell::RefCell,
+    fmt::{self, Debug},
+    rc::Rc,
+};
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub enum Operator {
@@ -16,6 +20,12 @@ pub struct Symbol {
     pub left: Option<Rc<RefCell<Symbol>>>,
     pub right: Option<Rc<RefCell<Symbol>>>,
     pub operator: Option<Operator>,
+}
+
+impl fmt::Display for Symbol {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.short(f)
+    }
 }
 
 impl Symbol {
@@ -175,5 +185,39 @@ impl Symbol {
             }
         }
         false
+    }
+
+    pub fn short(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.has_value() {
+            if self.operator_eq(&Operator::Not) {
+                write!(f, "not {}", self.value.unwrap())?;
+            } else {
+                write!(f, "{}", self.value.unwrap())?;
+            }
+        } else if self.has_operator() {
+            RefCell::borrow(&self.left.as_ref().unwrap()).short(f)?;
+            write!(f, " ")?;
+            match self.operator.unwrap() {
+                Operator::And => write!(f, "and"),
+                Operator::Or => write!(f, "or"),
+                Operator::Xor => write!(f, "xor"),
+                Operator::Not => write!(f, "not"),
+                Operator::Implies => write!(f, "implies"),
+                Operator::IfAndOnlyIf => write!(f, "if and only if"),
+            }?;
+            if self.has_right() {
+                write!(f, " ")?;
+                RefCell::borrow(&self.right.as_ref().unwrap()).short(f)?;
+            }
+        } else {
+            if self.has_left() {
+                RefCell::borrow(&self.left.as_ref().unwrap()).short(f)?;
+            }
+            if self.has_right() {
+                write!(f, " ")?;
+                RefCell::borrow(&self.right.as_ref().unwrap()).short(f)?;
+            }
+        }
+        Ok(())
     }
 }

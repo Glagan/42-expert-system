@@ -10,6 +10,7 @@ pub struct QueryResult {
     pub value: bool,
     pub ambiguous: bool,
     pub ambiguous_symbols: Vec<char>,
+    pub resolve_paths: Vec<String>,
 }
 
 impl fmt::Display for QueryResult {
@@ -57,6 +58,7 @@ impl Engine {
                 value: true,
                 ambiguous: false,
                 ambiguous_symbols: vec![],
+                resolve_paths: vec![format!("{} is {}", unit, "true".normal().on_green())],
             });
         }
         return self.resolve_query(unit);
@@ -91,6 +93,8 @@ impl Engine {
                             value: true,
                             ambiguous: false, // Can't be ambiguous
                             ambiguous_symbols: vec![],
+                            resolve_paths: [left_result.resolve_paths, right_result.resolve_paths]
+                                .concat(),
                         });
                     }
                     return Ok(QueryResult {
@@ -101,6 +105,8 @@ impl Engine {
                             right_result.ambiguous_symbols,
                         ]
                         .concat(),
+                        resolve_paths: [left_result.resolve_paths, right_result.resolve_paths]
+                            .concat(),
                     });
                 }
                 Operator::Or => {
@@ -109,6 +115,8 @@ impl Engine {
                             value: true,
                             ambiguous: false, // Can't be ambiguous
                             ambiguous_symbols: vec![],
+                            resolve_paths: [left_result.resolve_paths, right_result.resolve_paths]
+                                .concat(),
                         });
                     }
                     return Ok(QueryResult {
@@ -119,6 +127,8 @@ impl Engine {
                             right_result.ambiguous_symbols,
                         ]
                         .concat(),
+                        resolve_paths: [left_result.resolve_paths, right_result.resolve_paths]
+                            .concat(),
                     });
                 }
                 Operator::Xor => {
@@ -129,6 +139,8 @@ impl Engine {
                             value: true,
                             ambiguous: false, // Can't be ambiguous
                             ambiguous_symbols: vec![],
+                            resolve_paths: [left_result.resolve_paths, right_result.resolve_paths]
+                                .concat(),
                         });
                     }
                     return Ok(QueryResult {
@@ -139,6 +151,8 @@ impl Engine {
                             right_result.ambiguous_symbols,
                         ]
                         .concat(),
+                        resolve_paths: [left_result.resolve_paths, right_result.resolve_paths]
+                            .concat(),
                     });
                 }
                 _ => Err(format!("Invalid operator {:?} in Symbol", op)),
@@ -204,6 +218,7 @@ impl Engine {
                 value: true,
                 ambiguous: false,
                 ambiguous_symbols: vec![],
+                resolve_paths: vec![format!("{} is {}", query, "true".normal().on_green())],
             });
         }
 
@@ -226,6 +241,7 @@ impl Engine {
             if !rule.imply_symbol(query) {
                 continue;
             }
+            // Print the used rule
             // Check if the rule is already being resolved to avoid infinite recursion
             // -- it will use another rule for the query if possible
             if self.resolving_rules.borrow().contains(&index) {
@@ -235,13 +251,15 @@ impl Engine {
             self.resolving_rules.borrow_mut().push(index);
             // Resolve the rule -- errors are handled the same way in each functions and goes "up" to the root call
             let mut rule_result = self.resolve_rule(rule)?;
-            // Update memoized rule results
+            rule_result.resolve_paths.push(format!("{}", rule));
+            // Check conclusion *real* value
             let conclusion_result =
                 self.resolve_conclusion(query, Rc::clone(&rule.right.as_ref().unwrap()));
             rule_result.value = conclusion_result.unwrap();
             // If the result is true, return it -- we're done
             if rule_result.value {
                 remove_pending_rule(index);
+                println!("path {:#?}", rule_result.resolve_paths);
                 return Ok(rule_result);
             }
             // Set best_query_result or update it to the less ambiguous one
@@ -266,8 +284,11 @@ impl Engine {
                 value: false,
                 ambiguous: false,
                 ambiguous_symbols: vec![],
+                resolve_paths: vec![],
             });
         }
-        Ok(best_query_result.unwrap())
+        let best_query_result = best_query_result.unwrap();
+        println!("path {:#?}", best_query_result.resolve_paths);
+        Ok(best_query_result)
     }
 }

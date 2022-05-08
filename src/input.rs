@@ -455,10 +455,10 @@ impl Input {
         }
         for rule in self.rules.iter() {
             if rule.is_infinite() {
-                return Err(format!("Rule {:?} is infinite", rule));
+                return Err(format!("Rule {} is infinite", rule));
             }
             if rule.is_ambiguous() {
-                self.warnings.push(format!("Rule {:?} is ambiguous", rule));
+                self.warnings.push(format!("Rule {} is ambiguous", rule));
             }
         }
         Ok(())
