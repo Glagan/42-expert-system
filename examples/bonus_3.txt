@@ -1,0 +1,7 @@
+# This example works
+
+A => B | D
+C <=> E | F
+
+=AC
+?BDEF
