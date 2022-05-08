@@ -146,7 +146,7 @@ impl Symbol {
         false
     }
 
-    fn list_of_symbols(&self) -> Vec<char> {
+    pub fn list_of_symbols(&self) -> Vec<char> {
         let mut symbols = vec![];
         if let Some(value) = &self.value {
             symbols.push(*value)

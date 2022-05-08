@@ -44,7 +44,7 @@ fn main() {
                 "{}{} {}",
                 "?".normal().on_purple(),
                 format!("{}", query).bright_cyan().on_purple(),
-                result.unwrap_err()
+                format!("{}", result.unwrap_err()).red().on_yellow()
             );
         }
     }

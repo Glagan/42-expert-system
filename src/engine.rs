@@ -3,7 +3,7 @@ use crate::{
     symbol::{Operator, Symbol},
 };
 use colored::Colorize;
-use std::{cell::RefCell, collections::HashMap, fmt, rc::Rc, vec};
+use std::{cell::RefCell, fmt, rc::Rc, vec};
 
 #[derive(Debug)]
 pub struct QueryResult {
@@ -40,7 +40,6 @@ impl fmt::Display for QueryResult {
 #[derive(Debug)]
 pub struct Engine {
     pub input: Input,
-    memoized_queries: HashMap<char, QueryResult>,
     resolving_rules: RefCell<Vec<usize>>,
 }
 
@@ -48,7 +47,6 @@ impl Engine {
     pub fn new(input: Input) -> Engine {
         Engine {
             input,
-            memoized_queries: HashMap::new(),
             resolving_rules: RefCell::new(vec![]),
         }
     }
@@ -59,14 +57,6 @@ impl Engine {
                 value: true,
                 ambiguous: false,
                 ambiguous_symbols: vec![],
-            });
-        }
-        if self.memoized_queries.contains_key(unit) {
-            let memoized_result = self.memoized_queries.get(unit).unwrap();
-            return Ok(QueryResult {
-                value: memoized_result.value,
-                ambiguous: memoized_result.ambiguous,
-                ambiguous_symbols: memoized_result.ambiguous_symbols.clone(),
             });
         }
         return self.resolve_query(unit);
@@ -174,11 +164,35 @@ impl Engine {
                 return Ok(result);
             } else {
                 // Nested rule
-                // TODO memoize rule by it's value of it's right side
                 return self.resolve_symbol(Rc::clone(symbol));
             }
         }
         Err("Empty rule condition".to_string())
+    }
+
+    fn resolve_conclusion(&self, query: &char, rule: Rc<RefCell<Symbol>>) -> Option<bool> {
+        if let Some(value) = &RefCell::borrow(&rule).value {
+            if value == query {
+                // If there is a Operator::Not on the Symbol then it's his negation -- false
+                if RefCell::borrow(&rule).operator_eq(&Operator::Not) {
+                    return Some(false);
+                }
+                return Some(true);
+            }
+        }
+        if let Some(symbol) = &RefCell::borrow(&rule).left {
+            let branch_value = self.resolve_conclusion(query, Rc::clone(symbol));
+            if branch_value.is_some() {
+                return branch_value;
+            }
+        }
+        if let Some(symbol) = &RefCell::borrow(&rule).right {
+            let branch_value = self.resolve_conclusion(query, Rc::clone(symbol));
+            if branch_value.is_some() {
+                return branch_value;
+            }
+        }
+        None
     }
 
     pub fn resolve_query(&self, query: &char) -> Result<QueryResult, String> {
@@ -220,7 +234,12 @@ impl Engine {
             }
             self.resolving_rules.borrow_mut().push(index);
             // Resolve the rule -- errors are handled the same way in each functions and goes "up" to the root call
-            let rule_result = self.resolve_rule(rule)?;
+            let mut rule_result = self.resolve_rule(rule)?;
+            // Update memoized rule results
+            let conclusion_result =
+                self.resolve_conclusion(query, Rc::clone(&rule.right.as_ref().unwrap()));
+            rule_result.value = conclusion_result.unwrap();
+            // If the result is true, return it -- we're done
             if rule_result.value {
                 remove_pending_rule(index);
                 return Ok(rule_result);

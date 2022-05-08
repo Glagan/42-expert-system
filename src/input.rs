@@ -1,7 +1,6 @@
 use crate::symbol::{Operator, Symbol};
 use colored::Colorize;
 use nom::{
-    branch::alt,
     bytes::complete::{tag, take_until1, take_while, take_while1},
     character::complete::{anychar, multispace0},
     combinator::{opt, value},
@@ -286,9 +285,11 @@ fn parse_symbol_block(string: &str, is_conclusion: bool) -> Result<Rc<RefCell<Sy
 fn rule(i: &str) -> IResult<&str, (&str, &str, &str)> {
     let (input, (_, left, _, op, _, right, _, _)) = tuple((
         value((), multispace0),
-        alt((take_until1("<=>"), take_until1("=>"))),
+        // alt((take_until1("<=>"), take_until1("=>"))),
+        take_until1("=>"),
         value((), multispace0),
-        alt((tag("<=>"), tag("=>"))),
+        // alt((tag("<=>"), tag("=>"))),
+        tag("=>"),
         value((), multispace0),
         take_while1(|c| c != '#'),
         // Ignore comments
