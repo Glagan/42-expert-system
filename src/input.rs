@@ -154,7 +154,7 @@ fn parse_symbol_block(string: &str, is_conclusion: bool) -> Result<Rc<RefCell<Sy
                     // -- and the new nested symbol is set as the current symbol
                     if new_operator < RefCell::borrow(&current_symbol).operator.unwrap() { 
                         let new_symbol = Rc::new(RefCell::new(Symbol::new()));
-                        new_symbol.borrow_mut().left = Some(Rc::clone(&RefCell::borrow(&current_symbol).right.as_ref().unwrap()));
+                        new_symbol.borrow_mut().left = Some(Rc::clone(RefCell::borrow(&current_symbol).right.as_ref().unwrap()));
                         new_symbol.borrow_mut().operator = Some(new_operator);
                         current_symbol.borrow_mut().right = Some(Rc::clone(&new_symbol));
                         upper_symbols.push(Rc::clone(&current_symbol));

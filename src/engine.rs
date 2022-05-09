@@ -59,7 +59,7 @@ impl Engine {
                 ambiguous_symbols: vec![],
             });
         }
-        return self.resolve_query(unit);
+        self.resolve_query(unit)
     }
 
     fn resolve_symbol(&self, symbol: Rc<RefCell<Symbol>>) -> Result<QueryResult, String> {
@@ -81,9 +81,9 @@ impl Engine {
             }
             let symbol = symbol.borrow();
             let left = symbol.left.as_ref().unwrap();
-            let left_result = self.resolve_symbol(Rc::clone(&left))?;
+            let left_result = self.resolve_symbol(Rc::clone(left))?;
             let right = symbol.right.as_ref().unwrap();
-            let right_result = self.resolve_symbol(Rc::clone(&right))?;
+            let right_result = self.resolve_symbol(Rc::clone(right))?;
             return match op {
                 Operator::And => {
                     if left_result.value && right_result.value {
@@ -237,7 +237,7 @@ impl Engine {
             let mut rule_result = self.resolve_rule(rule)?;
             // Update memoized rule results
             let conclusion_result =
-                self.resolve_conclusion(query, Rc::clone(&rule.right.as_ref().unwrap()));
+                self.resolve_conclusion(query, Rc::clone(rule.right.as_ref().unwrap()));
             rule_result.value = conclusion_result.unwrap();
             // If the result is true, return it -- we're done
             if rule_result.value {
