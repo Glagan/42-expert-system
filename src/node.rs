@@ -23,15 +23,32 @@ pub struct Fact {
 }
 
 impl Fact {
-    #[allow(dead_code)]
     pub fn set(&mut self, value: bool) {
         self.value = value;
         self.resolved = true;
+    }
+
+    pub fn resolve(&mut self) -> Result<bool, String> {
+        if self.resolved {
+            return Ok(self.value);
+        }
+        self.resolved = true;
+        if !self.rules.is_empty() {
+            for rule in self.rules.iter_mut() {
+                let result = rule.borrow_mut().resolve()?;
+                if result {
+                    self.value = true;
+                    break;
+                }
+            }
+        }
+        Ok(self.value)
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct Node {
+    pub visited: bool,
     pub fact: Option<Rc<RefCell<Fact>>>,
     pub left: Option<Rc<RefCell<Node>>>,
     pub right: Option<Rc<RefCell<Node>>>,
@@ -40,13 +57,48 @@ pub struct Node {
 
 impl fmt::Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.short(f)
+        if self.has_fact() {
+            if self.operator_eq(&Operator::Not) {
+                write!(
+                    f,
+                    "not {}",
+                    RefCell::borrow(&self.fact.as_ref().unwrap()).repr
+                )?;
+            } else {
+                write!(f, "{}", RefCell::borrow(&self.fact.as_ref().unwrap()).repr)?;
+            }
+        } else if self.has_operator() {
+            std::fmt::Display::fmt(&RefCell::borrow(&self.left.as_ref().unwrap()), f)?;
+            write!(f, " ")?;
+            match self.operator.unwrap() {
+                Operator::And => write!(f, "and"),
+                Operator::Or => write!(f, "or"),
+                Operator::Xor => write!(f, "xor"),
+                Operator::Not => write!(f, "not"),
+                Operator::Implies => write!(f, "implies"),
+                Operator::IfAndOnlyIf => write!(f, "if and only if"),
+            }?;
+            if self.has_right() {
+                write!(f, " ")?;
+                std::fmt::Display::fmt(&RefCell::borrow(&self.right.as_ref().unwrap()), f)?;
+            }
+        } else {
+            if self.has_left() {
+                std::fmt::Display::fmt(&RefCell::borrow(&self.left.as_ref().unwrap()), f)?;
+            }
+            if self.has_right() {
+                write!(f, " ")?;
+                std::fmt::Display::fmt(&RefCell::borrow(&self.right.as_ref().unwrap()), f)?;
+            }
+        }
+        Ok(())
     }
 }
 
 impl Node {
     pub fn new() -> Node {
         Node {
+            visited: false,
             fact: None,
             left: None,
             right: None,
@@ -56,6 +108,7 @@ impl Node {
 
     pub fn operator(operator: Operator) -> Node {
         Node {
+            visited: false,
             fact: None,
             left: None,
             right: None,
@@ -97,40 +150,6 @@ impl Node {
         false
     }
 
-    // TODO Rewrite ?
-    fn symbol_has_operator(symbol: &Rc<RefCell<Node>>, op: &Operator) -> bool {
-        if RefCell::borrow(symbol).operator_eq(op) {
-            return true;
-        }
-        let mut side_result = false;
-        if let Some(left) = &RefCell::borrow(symbol).left {
-            side_result = Node::symbol_has_operator(left, op);
-        }
-        if !side_result {
-            if let Some(right) = &RefCell::borrow(symbol).right {
-                side_result = Node::symbol_has_operator(right, op);
-            }
-        }
-        side_result
-    }
-
-    // TODO Rewrite ?
-    pub fn is_ambiguous(&self) -> bool {
-        if let Some(right) = &self.right {
-            if Node::symbol_has_operator(right, &Operator::Or) {
-                return true;
-            }
-        }
-        if self.operator_eq(&Operator::IfAndOnlyIf) {
-            if let Some(left) = &self.left {
-                if Node::symbol_has_operator(left, &Operator::Or) {
-                    return true;
-                }
-            }
-        }
-        false
-    }
-
     pub fn all_facts(&self) -> Vec<Rc<RefCell<Fact>>> {
         let mut facts = vec![];
         if let Some(value) = &self.fact {
@@ -147,57 +166,96 @@ impl Node {
         facts
     }
 
-    // TODO Rewrite ?
-    /*pub fn is_infinite(&self) -> bool {
-        if let Some(left) = &self.left {
-            if let Some(right) = &self.right {
-                let left_symbols = RefCell::borrow(left).list_of_symbols();
-                let right_symbols = RefCell::borrow(right).list_of_symbols();
-                for right_symbol in right_symbols.iter() {
-                    if left_symbols.contains(right_symbol) {
-                        return true;
-                    }
-                }
-            }
-        }
-        false
-    }*/
-
-    pub fn short(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    pub fn print_short(&self) {
         if self.has_fact() {
             if self.operator_eq(&Operator::Not) {
-                write!(
-                    f,
-                    "not {}",
-                    RefCell::borrow(&self.fact.as_ref().unwrap()).repr
-                )?;
+                print!("!{}", RefCell::borrow(&self.fact.as_ref().unwrap()).repr);
             } else {
-                write!(f, "{}", RefCell::borrow(&self.fact.as_ref().unwrap()).repr)?;
+                print!("{}", RefCell::borrow(&self.fact.as_ref().unwrap()).repr);
             }
         } else if self.has_operator() {
-            RefCell::borrow(&self.left.as_ref().unwrap()).short(f)?;
-            write!(f, " ")?;
+            if !self.operator_eq(&Operator::Implies) && !self.operator_eq(&Operator::IfAndOnlyIf) {
+                print!("(");
+            }
+            RefCell::borrow(&self.left.as_ref().unwrap()).print_short();
+            print!(" ");
             match self.operator.unwrap() {
-                Operator::And => write!(f, "and"),
-                Operator::Or => write!(f, "or"),
-                Operator::Xor => write!(f, "xor"),
-                Operator::Not => write!(f, "not"),
-                Operator::Implies => write!(f, "implies"),
-                Operator::IfAndOnlyIf => write!(f, "if and only if"),
-            }?;
+                Operator::And => print!("+"),
+                Operator::Or => print!("|"),
+                Operator::Xor => print!("^"),
+                Operator::Not => print!("!"),
+                Operator::Implies => print!("=>"),
+                Operator::IfAndOnlyIf => print!("<=>"),
+            };
             if self.has_right() {
-                write!(f, " ")?;
-                RefCell::borrow(&self.right.as_ref().unwrap()).short(f)?;
+                print!(" ");
+                RefCell::borrow(&self.right.as_ref().unwrap()).print_short();
+            }
+            if !self.operator_eq(&Operator::Implies) && !self.operator_eq(&Operator::IfAndOnlyIf) {
+                print!(")");
             }
         } else {
             if self.has_left() {
-                RefCell::borrow(&self.left.as_ref().unwrap()).short(f)?;
+                RefCell::borrow(&self.left.as_ref().unwrap()).print_short();
             }
             if self.has_right() {
-                write!(f, " ")?;
-                RefCell::borrow(&self.right.as_ref().unwrap()).short(f)?;
+                print!(" ");
+                RefCell::borrow(&self.right.as_ref().unwrap()).print_short();
             }
         }
-        Ok(())
+    }
+
+    pub fn resolve(&mut self) -> Result<bool, String> {
+        if self.visited {
+            return Err("Infinite rule".to_string());
+        }
+        self.visited = true;
+        if self.fact.is_some() {
+            let result = self.fact.as_ref().unwrap().borrow_mut().resolve()?;
+            self.visited = false;
+            if self.operator_eq(&Operator::Not) {
+                return Ok(!result);
+            }
+            return Ok(result);
+        } else if let Some(op) = &self.operator {
+            let result = match op {
+                Operator::Implies => {
+                    let left = self.left.as_ref().unwrap().borrow_mut().resolve()?;
+                    if left {
+                        return Ok(self.right.as_ref().unwrap().borrow_mut().resolve()?);
+                    }
+                    Ok(false)
+                }
+                Operator::IfAndOnlyIf => {
+                    let left = self.left.as_ref().unwrap().borrow_mut().resolve()?;
+                    let right = self.right.as_ref().unwrap().borrow_mut().resolve()?;
+                    Ok(left && right)
+                }
+                Operator::And => {
+                    let left = self.left.as_ref().unwrap().borrow_mut().resolve()?;
+                    let right = self.right.as_ref().unwrap().borrow_mut().resolve()?;
+                    Ok(left && right)
+                }
+                Operator::Or => {
+                    let left = self.left.as_ref().unwrap().borrow_mut().resolve()?;
+                    let right = self.right.as_ref().unwrap().borrow_mut().resolve()?;
+                    Ok(left || right)
+                }
+                Operator::Xor => {
+                    let left = self.left.as_ref().unwrap().borrow_mut().resolve()?;
+                    let right = self.right.as_ref().unwrap().borrow_mut().resolve()?;
+                    Ok((left && !right) || (!left && right))
+                }
+                _ => Err("Invalid operator in resolve".to_string()),
+            }?;
+            self.visited = false;
+            return Ok(result);
+        } else if self.has_left() {
+            let result = self.left.as_ref().unwrap().borrow_mut().resolve()?;
+            self.visited = false;
+            return Ok(result);
+        }
+        self.visited = false;
+        Err("Empty Node".to_string())
     }
 }

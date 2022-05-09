@@ -144,6 +144,7 @@ impl Input {
     fn fact_node(&mut self, symbol: &char) -> Rc<RefCell<Node>> {
         let fact = self.get_or_insert_fact(symbol);
         Rc::new(RefCell::new(Node {
+            visited: false,
             fact: Some(fact),
             left: None,
             right: None,
@@ -427,6 +428,7 @@ impl Input {
                 if let Ok((_, (left, op, right))) = result {
                     let (left, right) = prepare_rule(left, right)?;  
                     let rule = Rc::new(RefCell::new(Node {
+                        visited: false,
                         fact: None,
                         left: Some(self.parse_rule_block(&left)?),
                         right: Some(self.parse_rule_block(&right)?),
@@ -516,11 +518,19 @@ impl Input {
         }
     }
 
+    pub fn show_rules(&self) {
+        for rule in self.rules.iter() {
+            print!("{}  ", "|".normal().on_blue(),);
+            RefCell::borrow(rule).print_short();
+            println!();
+        }
+    }
+
     pub fn show_initial_facts(&self) {
         print!("{}  ", "=".normal().on_purple());
         if !self.initial_facts.is_empty() {
             for repr in self.initial_facts.iter() {
-                print!("{}", format!("{}", repr).normal().on_green());
+                print!("{}", format!("{}", repr).green());
             }
         } else {
             print!("No initial facts");
