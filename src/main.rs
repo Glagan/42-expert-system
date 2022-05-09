@@ -54,7 +54,7 @@ fn main() {
                 "{}{} {}",
                 "?".normal().on_purple(),
                 format!("{}", query).bright_cyan().on_purple(),
-                format!("{}", result.unwrap_err()).red().on_yellow()
+                result.unwrap_err().to_string().red().on_yellow()
             );
         }
     }

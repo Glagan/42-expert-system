@@ -61,13 +61,13 @@ impl fmt::Display for Node {
                 write!(
                     f,
                     "not {}",
-                    RefCell::borrow(&self.fact.as_ref().unwrap()).repr
+                    RefCell::borrow(self.fact.as_ref().unwrap()).repr
                 )?;
             } else {
-                write!(f, "{}", RefCell::borrow(&self.fact.as_ref().unwrap()).repr)?;
+                write!(f, "{}", RefCell::borrow(self.fact.as_ref().unwrap()).repr)?;
             }
         } else if self.has_operator() {
-            std::fmt::Display::fmt(&RefCell::borrow(&self.left.as_ref().unwrap()), f)?;
+            std::fmt::Display::fmt(&RefCell::borrow(self.left.as_ref().unwrap()), f)?;
             write!(f, " ")?;
             match self.operator.unwrap() {
                 Operator::And => write!(f, "and"),
@@ -79,15 +79,15 @@ impl fmt::Display for Node {
             }?;
             if self.has_right() {
                 write!(f, " ")?;
-                std::fmt::Display::fmt(&RefCell::borrow(&self.right.as_ref().unwrap()), f)?;
+                std::fmt::Display::fmt(&RefCell::borrow(self.right.as_ref().unwrap()), f)?;
             }
         } else {
             if self.has_left() {
-                std::fmt::Display::fmt(&RefCell::borrow(&self.left.as_ref().unwrap()), f)?;
+                std::fmt::Display::fmt(&RefCell::borrow(self.left.as_ref().unwrap()), f)?;
             }
             if self.has_right() {
                 write!(f, " ")?;
-                std::fmt::Display::fmt(&RefCell::borrow(&self.right.as_ref().unwrap()), f)?;
+                std::fmt::Display::fmt(&RefCell::borrow(self.right.as_ref().unwrap()), f)?;
             }
         }
         Ok(())
@@ -166,15 +166,15 @@ impl Node {
     pub fn print_short(&self) {
         if self.has_fact() {
             if self.operator_eq(&Operator::Not) {
-                print!("!{}", RefCell::borrow(&self.fact.as_ref().unwrap()).repr);
+                print!("!{}", RefCell::borrow(self.fact.as_ref().unwrap()).repr);
             } else {
-                print!("{}", RefCell::borrow(&self.fact.as_ref().unwrap()).repr);
+                print!("{}", RefCell::borrow(self.fact.as_ref().unwrap()).repr);
             }
         } else if self.has_operator() {
             if !self.operator_eq(&Operator::Implies) && !self.operator_eq(&Operator::IfAndOnlyIf) {
                 print!("(");
             }
-            RefCell::borrow(&self.left.as_ref().unwrap()).print_short();
+            RefCell::borrow(self.left.as_ref().unwrap()).print_short();
             print!(" ");
             match self.operator.unwrap() {
                 Operator::And => print!("+"),
@@ -186,18 +186,18 @@ impl Node {
             };
             if self.has_right() {
                 print!(" ");
-                RefCell::borrow(&self.right.as_ref().unwrap()).print_short();
+                RefCell::borrow(self.right.as_ref().unwrap()).print_short();
             }
             if !self.operator_eq(&Operator::Implies) && !self.operator_eq(&Operator::IfAndOnlyIf) {
                 print!(")");
             }
         } else {
             if self.has_left() {
-                RefCell::borrow(&self.left.as_ref().unwrap()).print_short();
+                RefCell::borrow(self.left.as_ref().unwrap()).print_short();
             }
             if self.has_right() {
                 print!(" ");
-                RefCell::borrow(&self.right.as_ref().unwrap()).print_short();
+                RefCell::borrow(self.right.as_ref().unwrap()).print_short();
             }
         }
     }

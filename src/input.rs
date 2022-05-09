@@ -126,7 +126,7 @@ impl Input {
     }
 
     fn get_or_insert_fact(&mut  self, symbol: &char) -> Rc<RefCell<Fact>> { 
-        let fact = self.facts.get(&symbol);
+        let fact = self.facts.get(symbol);
         if fact.is_none() {
             self.facts.insert(*symbol, 
                 Rc::new(RefCell::new(Fact {
@@ -136,9 +136,9 @@ impl Input {
                     rules:vec![]
                 }))
             );
-            return Rc::clone(&self.facts.get(&symbol).unwrap()); 
+            return Rc::clone(self.facts.get(symbol).unwrap()); 
         }
-        Rc::clone(&fact.unwrap())
+        Rc::clone(fact.unwrap())
     }
 
     fn fact_node(&mut self, symbol: &char) -> Rc<RefCell<Node>> {
@@ -255,7 +255,7 @@ impl Input {
                         // -- and the new nested symbol is set as the current symbol
                         if new_operator < RefCell::borrow(&current_symbol).operator.unwrap() { 
                             let new_symbol = Rc::new(RefCell::new(Node::new()));
-                            new_symbol.borrow_mut().left = Some(Rc::clone(&RefCell::borrow(&current_symbol).right.as_ref().unwrap()));
+                            new_symbol.borrow_mut().left = Some(Rc::clone(RefCell::borrow(&current_symbol).right.as_ref().unwrap()));
                             new_symbol.borrow_mut().operator = Some(new_operator);
                             current_symbol.borrow_mut().right = Some(Rc::clone(&new_symbol));
                             upper_symbols.push(Rc::clone(&current_symbol));
@@ -438,11 +438,11 @@ impl Input {
                     }));
                     let rule_ref = RefCell::borrow(&rule);
                     if rule_ref.operator_eq(&Operator::IfAndOnlyIf) {
-                        for fact in RefCell::borrow(&rule_ref.left.as_ref().unwrap()).all_facts().iter() {
+                        for fact in RefCell::borrow(rule_ref.left.as_ref().unwrap()).all_facts().iter() {
                             RefCell::borrow_mut(fact).rules.push(Rc::clone(&rule));
                         }
                     } 
-                    for fact in RefCell::borrow(&rule_ref.right.as_ref().unwrap()).all_facts().iter() {
+                    for fact in RefCell::borrow(rule_ref.right.as_ref().unwrap()).all_facts().iter() {
                         RefCell::borrow_mut(fact).rules.push(Rc::clone(&rule));
                     }
                     self.rules.push(Rc::clone(&rule));
