@@ -10,7 +10,6 @@ pub struct QueryResult {
     pub value: bool,
     pub ambiguous: bool,
     pub ambiguous_symbols: Vec<char>,
-    pub resolve_paths: Vec<String>,
 }
 
 impl fmt::Display for QueryResult {
@@ -52,22 +51,26 @@ impl Engine {
         }
     }
 
-    fn resolve_unit(&self, unit: &char) -> Result<QueryResult, String> {
+    fn resolve_unit(&self, unit: &char, path: &mut Vec<String>) -> Result<QueryResult, String> {
         if self.input.initial_facts.contains_key(unit) {
+            path.push(format!("{} is {}", unit, "true".normal().on_green()));
             return Ok(QueryResult {
                 value: true,
                 ambiguous: false,
                 ambiguous_symbols: vec![],
-                resolve_paths: vec![format!("{} is {}", unit, "true".normal().on_green())],
             });
         }
-        return self.resolve_query(unit);
+        return self.resolve_query(unit, path);
     }
 
-    fn resolve_symbol(&self, symbol: Rc<RefCell<Symbol>>) -> Result<QueryResult, String> {
+    fn resolve_symbol(
+        &self,
+        symbol: Rc<RefCell<Symbol>>,
+        path: &mut Vec<String>,
+    ) -> Result<QueryResult, String> {
         // Resolve simple rules with a value
         if let Some(value) = &RefCell::borrow(&symbol).value {
-            let mut result = self.resolve_unit(value)?;
+            let mut result = self.resolve_unit(value, path)?;
             if RefCell::borrow(&symbol).operator_eq(&Operator::Not) {
                 result.value = !result.value
             }
@@ -83,9 +86,9 @@ impl Engine {
             }
             let symbol = symbol.borrow();
             let left = symbol.left.as_ref().unwrap();
-            let left_result = self.resolve_symbol(Rc::clone(&left))?;
+            let left_result = self.resolve_symbol(Rc::clone(&left), path)?;
             let right = symbol.right.as_ref().unwrap();
-            let right_result = self.resolve_symbol(Rc::clone(&right))?;
+            let right_result = self.resolve_symbol(Rc::clone(&right), path)?;
             return match op {
                 Operator::And => {
                     if left_result.value && right_result.value {
@@ -93,8 +96,6 @@ impl Engine {
                             value: true,
                             ambiguous: false, // Can't be ambiguous
                             ambiguous_symbols: vec![],
-                            resolve_paths: [left_result.resolve_paths, right_result.resolve_paths]
-                                .concat(),
                         });
                     }
                     return Ok(QueryResult {
@@ -105,8 +106,6 @@ impl Engine {
                             right_result.ambiguous_symbols,
                         ]
                         .concat(),
-                        resolve_paths: [left_result.resolve_paths, right_result.resolve_paths]
-                            .concat(),
                     });
                 }
                 Operator::Or => {
@@ -115,8 +114,6 @@ impl Engine {
                             value: true,
                             ambiguous: false, // Can't be ambiguous
                             ambiguous_symbols: vec![],
-                            resolve_paths: [left_result.resolve_paths, right_result.resolve_paths]
-                                .concat(),
                         });
                     }
                     return Ok(QueryResult {
@@ -127,8 +124,6 @@ impl Engine {
                             right_result.ambiguous_symbols,
                         ]
                         .concat(),
-                        resolve_paths: [left_result.resolve_paths, right_result.resolve_paths]
-                            .concat(),
                     });
                 }
                 Operator::Xor => {
@@ -139,8 +134,6 @@ impl Engine {
                             value: true,
                             ambiguous: false, // Can't be ambiguous
                             ambiguous_symbols: vec![],
-                            resolve_paths: [left_result.resolve_paths, right_result.resolve_paths]
-                                .concat(),
                         });
                     }
                     return Ok(QueryResult {
@@ -151,8 +144,6 @@ impl Engine {
                             right_result.ambiguous_symbols,
                         ]
                         .concat(),
-                        resolve_paths: [left_result.resolve_paths, right_result.resolve_paths]
-                            .concat(),
                     });
                 }
                 _ => Err(format!("Invalid operator {:?} in Symbol", op)),
@@ -160,25 +151,25 @@ impl Engine {
         }
         // Resolve nested block
         if let Some(left) = &RefCell::borrow(&symbol).left {
-            return self.resolve_symbol(Rc::clone(left));
+            return self.resolve_symbol(Rc::clone(left), path);
         }
         Err(format!("Invalid Symbol {:?} in rule", symbol))
     }
 
-    fn resolve_rule(&self, rule: &Symbol) -> Result<QueryResult, String> {
+    fn resolve_rule(&self, rule: &Symbol, path: &mut Vec<String>) -> Result<QueryResult, String> {
         // A rule should have a left symbol
         // -- except if it's only a value (with an optionnal Operator::Not)
         if let Some(symbol) = &rule.left {
             if let Some(value) = &RefCell::borrow(symbol).value {
                 // Simple rule
-                let mut result = self.resolve_unit(value)?;
+                let mut result = self.resolve_unit(value, path)?;
                 if rule.operator_eq(&Operator::Not) {
                     result.value = !result.value;
                 }
                 return Ok(result);
             } else {
                 // Nested rule
-                return self.resolve_symbol(Rc::clone(symbol));
+                return self.resolve_symbol(Rc::clone(symbol), path);
             }
         }
         Err("Empty rule condition".to_string())
@@ -209,7 +200,11 @@ impl Engine {
         None
     }
 
-    pub fn resolve_query(&self, query: &char) -> Result<QueryResult, String> {
+    pub fn resolve_query(
+        &self,
+        query: &char,
+        path: &mut Vec<String>,
+    ) -> Result<QueryResult, String> {
         // Resolve initial facts queries
         if self.input.initial_facts.contains_key(query)
             && *self.input.initial_facts.get(query).unwrap()
@@ -218,7 +213,6 @@ impl Engine {
                 value: true,
                 ambiguous: false,
                 ambiguous_symbols: vec![],
-                resolve_paths: vec![format!("{} is {}", query, "true".normal().on_green())],
             });
         }
 
@@ -250,8 +244,7 @@ impl Engine {
             }
             self.resolving_rules.borrow_mut().push(index);
             // Resolve the rule -- errors are handled the same way in each functions and goes "up" to the root call
-            let mut rule_result = self.resolve_rule(rule)?;
-            rule_result.resolve_paths.push(format!("{}", rule));
+            let mut rule_result = self.resolve_rule(rule, path)?;
             // Check conclusion *real* value
             let conclusion_result =
                 self.resolve_conclusion(query, Rc::clone(&rule.right.as_ref().unwrap()));
@@ -259,7 +252,6 @@ impl Engine {
             // If the result is true, return it -- we're done
             if rule_result.value {
                 remove_pending_rule(index);
-                println!("path {:#?}", rule_result.resolve_paths);
                 return Ok(rule_result);
             }
             // Set best_query_result or update it to the less ambiguous one
@@ -284,11 +276,8 @@ impl Engine {
                 value: false,
                 ambiguous: false,
                 ambiguous_symbols: vec![],
-                resolve_paths: vec![],
             });
         }
-        let best_query_result = best_query_result.unwrap();
-        println!("path {:#?}", best_query_result.resolve_paths);
-        Ok(best_query_result)
+        Ok(best_query_result.unwrap())
     }
 }

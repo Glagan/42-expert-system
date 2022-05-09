@@ -2,10 +2,10 @@ use std::process;
 
 use clap::{arg, command};
 
-mod engine;
-mod input;
 use colored::Colorize;
+mod engine;
 use engine::Engine;
+mod input;
 use input::Input;
 mod symbol;
 
@@ -31,7 +31,8 @@ fn main() {
     // Create an inference engine for the Input and resolve all queries
     let engine = Engine::new(input);
     for query in &engine.input.queries {
-        let result = engine.resolve_query(query);
+        let mut path: Vec<String> = vec![];
+        let result = engine.resolve_query(query, &mut path);
         if let Ok(result) = result {
             println!(
                 "{}{} {}",
