@@ -144,7 +144,6 @@ impl Input {
     fn fact_node(&mut self, symbol: &char) -> Rc<RefCell<Node>> {
         let fact = self.get_or_insert_fact(symbol);
         Rc::new(RefCell::new(Node {
-            visited: false,
             fact: Some(fact),
             left: None,
             right: None,
@@ -428,7 +427,6 @@ impl Input {
                 if let Ok((_, (left, op, right))) = result {
                     let (left, right) = prepare_rule(left, right)?;  
                     let rule = Rc::new(RefCell::new(Node {
-                        visited: false,
                         fact: None,
                         left: Some(self.parse_rule_block(&left)?),
                         right: Some(self.parse_rule_block(&right)?),

@@ -34,7 +34,7 @@ impl Fact {
         }
         self.resolved = true;
         if !self.rules.is_empty() {
-            for rule in self.rules.iter_mut() {
+            for rule in self.rules.iter() {
                 let result = rule.borrow_mut().resolve()?;
                 if result {
                     self.value = true;
@@ -48,7 +48,6 @@ impl Fact {
 
 #[derive(Clone, Debug)]
 pub struct Node {
-    pub visited: bool,
     pub fact: Option<Rc<RefCell<Fact>>>,
     pub left: Option<Rc<RefCell<Node>>>,
     pub right: Option<Rc<RefCell<Node>>>,
@@ -98,7 +97,6 @@ impl fmt::Display for Node {
 impl Node {
     pub fn new() -> Node {
         Node {
-            visited: false,
             fact: None,
             left: None,
             right: None,
@@ -108,7 +106,6 @@ impl Node {
 
     pub fn operator(operator: Operator) -> Node {
         Node {
-            visited: false,
             fact: None,
             left: None,
             right: None,
@@ -206,13 +203,12 @@ impl Node {
     }
 
     pub fn resolve(&mut self) -> Result<bool, String> {
-        if self.visited {
-            return Err("Infinite rule".to_string());
-        }
-        self.visited = true;
         if self.fact.is_some() {
-            let result = self.fact.as_ref().unwrap().borrow_mut().resolve()?;
-            self.visited = false;
+            let left = self.fact.as_ref().unwrap().try_borrow_mut();
+            if left.is_err() {
+                return Ok(false);
+            }
+            let result = left.unwrap().resolve()?;
             if self.operator_eq(&Operator::Not) {
                 return Ok(!result);
             }
@@ -220,42 +216,84 @@ impl Node {
         } else if let Some(op) = &self.operator {
             let result = match op {
                 Operator::Implies => {
-                    let left = self.left.as_ref().unwrap().borrow_mut().resolve()?;
-                    if left {
-                        return Ok(self.right.as_ref().unwrap().borrow_mut().resolve()?);
+                    let left = self.left.as_ref().unwrap().try_borrow_mut();
+                    if left.is_err() {
+                        return Ok(false);
                     }
-                    Ok(false)
+                    let result = left.unwrap().resolve()?;
+                    // TODO Handle operators in conclusions
+                    // if result {
+                    //     let right = self.right.as_ref().unwrap().try_borrow_mut();
+                    //     if right.is_err() {
+                    //         return Ok(false);
+                    //     }
+                    //     return Ok(right.unwrap().resolve()?);
+                    // }
+                    Ok(result)
                 }
                 Operator::IfAndOnlyIf => {
-                    let left = self.left.as_ref().unwrap().borrow_mut().resolve()?;
-                    let right = self.right.as_ref().unwrap().borrow_mut().resolve()?;
+                    let left = self.left.as_ref().unwrap().try_borrow_mut();
+                    if left.is_err() {
+                        return Ok(false);
+                    }
+                    let right = self.left.as_ref().unwrap().try_borrow_mut();
+                    if right.is_err() {
+                        return Ok(false);
+                    }
+                    let left = left.unwrap().resolve()?;
+                    let right = right.unwrap().resolve()?;
                     Ok(left && right)
                 }
                 Operator::And => {
-                    let left = self.left.as_ref().unwrap().borrow_mut().resolve()?;
-                    let right = self.right.as_ref().unwrap().borrow_mut().resolve()?;
+                    let left = self.left.as_ref().unwrap().try_borrow_mut();
+                    if left.is_err() {
+                        return Ok(false);
+                    }
+                    let right = self.left.as_ref().unwrap().try_borrow_mut();
+                    if right.is_err() {
+                        return Ok(false);
+                    }
+                    let left = left.unwrap().resolve()?;
+                    let right = right.unwrap().resolve()?;
                     Ok(left && right)
                 }
                 Operator::Or => {
-                    let left = self.left.as_ref().unwrap().borrow_mut().resolve()?;
-                    let right = self.right.as_ref().unwrap().borrow_mut().resolve()?;
+                    let left = self.left.as_ref().unwrap().try_borrow_mut();
+                    if left.is_err() {
+                        return Ok(false);
+                    }
+                    let right = self.left.as_ref().unwrap().try_borrow_mut();
+                    if right.is_err() {
+                        return Ok(false);
+                    }
+                    let left = left.unwrap().resolve()?;
+                    let right = right.unwrap().resolve()?;
                     Ok(left || right)
                 }
                 Operator::Xor => {
-                    let left = self.left.as_ref().unwrap().borrow_mut().resolve()?;
-                    let right = self.right.as_ref().unwrap().borrow_mut().resolve()?;
+                    let left = self.left.as_ref().unwrap().try_borrow_mut();
+                    if left.is_err() {
+                        return Ok(false);
+                    }
+                    let right = self.left.as_ref().unwrap().try_borrow_mut();
+                    if right.is_err() {
+                        return Ok(false);
+                    }
+                    let left = left.unwrap().resolve()?;
+                    let right = right.unwrap().resolve()?;
                     Ok((left && !right) || (!left && right))
                 }
                 _ => Err("Invalid operator in resolve".to_string()),
             }?;
-            self.visited = false;
             return Ok(result);
         } else if self.has_left() {
-            let result = self.left.as_ref().unwrap().borrow_mut().resolve()?;
-            self.visited = false;
+            let left = self.left.as_ref().unwrap().try_borrow_mut();
+            if left.is_err() {
+                return Ok(false);
+            }
+            let result = left.unwrap().resolve()?;
             return Ok(result);
         }
-        self.visited = false;
         Err("Empty Node".to_string())
     }
 }
