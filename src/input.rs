@@ -444,6 +444,9 @@ impl Input {
     }
 
     fn check(&mut self) -> Result<(), String> {
+        if self.rules.is_empty() {
+            self.warnings.push("No rules".to_string());
+        }
         if self.queries.is_empty() {
             return Err("Queries can't be empty".to_string());
         }
@@ -481,11 +484,19 @@ impl Input {
         }
     }
 
+    pub fn show_rules(&self) {
+        for rule in self.rules.iter() {
+            print!("{}  ", "|".normal().on_blue(),);
+            rule.print_short();
+            println!();
+        }
+    }
+
     pub fn show_initial_facts(&self) {
         print!("{}  ", "=".normal().on_purple());
         if !self.initial_facts.is_empty() {
             for (symbol, _) in self.initial_facts.iter() {
-                print!("{}", format!("{}", symbol).normal().on_green());
+                print!("{}", format!("{}", symbol).green());
             }
         } else {
             print!("No initial facts");

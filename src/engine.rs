@@ -30,9 +30,9 @@ impl fmt::Display for QueryResult {
                 write!(f, "{}", "ambiguous".normal().on_yellow())
             }
         } else if self.value {
-            write!(f, "{}", "true".normal().on_green())
+            write!(f, "{}", "true".cyan())
         } else {
-            write!(f, "{}", "false".normal().on_red())
+            write!(f, "{}", "false".yellow())
         }
     }
 }

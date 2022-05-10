@@ -176,4 +176,43 @@ impl Symbol {
         }
         false
     }
+
+    pub fn print_short(&self) {
+        if self.has_value() {
+            if self.operator_eq(&Operator::Not) {
+                print!("!{}", self.value.unwrap());
+            } else {
+                print!("{}", self.value.unwrap());
+            }
+        } else if self.has_operator() {
+            if !self.operator_eq(&Operator::Implies) && !self.operator_eq(&Operator::IfAndOnlyIf) {
+                print!("(");
+            }
+            RefCell::borrow(self.left.as_ref().unwrap()).print_short();
+            print!(" ");
+            match self.operator.unwrap() {
+                Operator::And => print!("+"),
+                Operator::Or => print!("|"),
+                Operator::Xor => print!("^"),
+                Operator::Not => print!("!"),
+                Operator::Implies => print!("=>"),
+                Operator::IfAndOnlyIf => print!("<=>"),
+            };
+            if self.has_right() {
+                print!(" ");
+                RefCell::borrow(self.right.as_ref().unwrap()).print_short();
+            }
+            if !self.operator_eq(&Operator::Implies) && !self.operator_eq(&Operator::IfAndOnlyIf) {
+                print!(")");
+            }
+        } else {
+            if self.has_left() {
+                RefCell::borrow(self.left.as_ref().unwrap()).print_short();
+            }
+            if self.has_right() {
+                print!(" ");
+                RefCell::borrow(self.right.as_ref().unwrap()).print_short();
+            }
+        }
+    }
 }

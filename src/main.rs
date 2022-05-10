@@ -26,6 +26,7 @@ fn main() {
         process::exit(1);
     });
     input.show_warnings();
+    input.show_rules();
     input.show_initial_facts();
 
     // Create an inference engine for the Input and resolve all queries
