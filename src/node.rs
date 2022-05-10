@@ -1,5 +1,6 @@
 use std::{
     cell::RefCell,
+    collections::HashMap,
     fmt::{self, Debug},
     rc::Rc,
 };
@@ -28,26 +29,36 @@ impl Fact {
         self.resolved = true;
     }
 
-    pub fn resolve(&mut self) -> Result<bool, String> {
+    pub fn resolve(
+        &self,
+        facts: &mut HashMap<char, bool>,
+        visited: &mut Vec<i64>,
+    ) -> Result<bool, String> {
         if self.resolved {
             return Ok(self.value);
         }
-        self.resolved = true;
+        if facts.contains_key(&self.repr) {
+            return Ok(*facts.get(&self.repr).unwrap());
+        }
+        // self.resolved = true;
         if !self.rules.is_empty() {
             for rule in self.rules.iter() {
-                let result = rule.borrow_mut().resolve()?;
+                let result = RefCell::borrow(rule).resolve(facts, visited)?;
                 if result {
-                    self.value = true;
-                    break;
+                    facts.insert(self.repr, result);
+                    // self.value = result;
+                    return Ok(result);
                 }
             }
         }
+        facts.insert(self.repr, self.value);
         Ok(self.value)
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct Node {
+    pub id: i64,
     pub fact: Option<Rc<RefCell<Fact>>>,
     pub left: Option<Rc<RefCell<Node>>>,
     pub right: Option<Rc<RefCell<Node>>>,
@@ -97,6 +108,7 @@ impl fmt::Display for Node {
 impl Node {
     pub fn new() -> Node {
         Node {
+            id: 0,
             fact: None,
             left: None,
             right: None,
@@ -106,6 +118,7 @@ impl Node {
 
     pub fn operator(operator: Operator) -> Node {
         Node {
+            id: 0,
             fact: None,
             left: None,
             right: None,
@@ -202,98 +215,81 @@ impl Node {
         }
     }
 
-    pub fn resolve(&mut self) -> Result<bool, String> {
+    pub fn resolve(
+        &self,
+        facts: &mut HashMap<char, bool>,
+        visited: &mut Vec<i64>,
+    ) -> Result<bool, String> {
+        if visited.contains(&self.id) {
+            return Err("Infinite rule".to_string());
+        }
+        visited.push(self.id);
         if self.fact.is_some() {
-            let left = self.fact.as_ref().unwrap().try_borrow_mut();
-            if left.is_err() {
-                return Ok(false);
-            }
-            let result = left.unwrap().resolve()?;
+            println!(
+                "checking fact {}",
+                RefCell::borrow(self.fact.as_ref().unwrap()).repr
+            );
+            let result = RefCell::borrow(self.fact.as_ref().unwrap()).resolve(facts, visited)?;
             if self.operator_eq(&Operator::Not) {
+                visited.swap_remove(visited.iter().position(|id| *id == self.id).unwrap());
                 return Ok(!result);
             }
+            visited.swap_remove(visited.iter().position(|id| *id == self.id).unwrap());
             return Ok(result);
         } else if let Some(op) = &self.operator {
             let result = match op {
                 Operator::Implies => {
-                    let left = self.left.as_ref().unwrap().try_borrow_mut();
-                    if left.is_err() {
-                        return Ok(false);
-                    }
-                    let result = left.unwrap().resolve()?;
+                    let result =
+                        RefCell::borrow(self.left.as_ref().unwrap()).resolve(facts, visited)?;
                     // TODO Handle operators in conclusions
                     // if result {
-                    //     let right = self.right.as_ref().unwrap().try_borrow_mut();
-                    //     if right.is_err() {
-                    //         return Ok(false);
-                    //     }
-                    //     return Ok(right.unwrap().resolve()?);
+                    //     return RefCell::borrow(self.right.as_ref().unwrap())
+                    //         .resolve(facts, visited);
                     // }
                     Ok(result)
                 }
                 Operator::IfAndOnlyIf => {
-                    let left = self.left.as_ref().unwrap().try_borrow_mut();
-                    if left.is_err() {
-                        return Ok(false);
-                    }
-                    let right = self.left.as_ref().unwrap().try_borrow_mut();
-                    if right.is_err() {
-                        return Ok(false);
-                    }
-                    let left = left.unwrap().resolve()?;
-                    let right = right.unwrap().resolve()?;
+                    let left =
+                        RefCell::borrow(self.left.as_ref().unwrap()).resolve(facts, visited)?;
+                    let right =
+                        RefCell::borrow(self.right.as_ref().unwrap()).resolve(facts, visited)?;
                     Ok(left && right)
                 }
                 Operator::And => {
-                    let left = self.left.as_ref().unwrap().try_borrow_mut();
-                    if left.is_err() {
-                        return Ok(false);
-                    }
-                    let right = self.left.as_ref().unwrap().try_borrow_mut();
-                    if right.is_err() {
-                        return Ok(false);
-                    }
-                    let left = left.unwrap().resolve()?;
-                    let right = right.unwrap().resolve()?;
+                    let left =
+                        RefCell::borrow(self.left.as_ref().unwrap()).resolve(facts, visited)?;
+                    let right =
+                        RefCell::borrow(self.right.as_ref().unwrap()).resolve(facts, visited)?;
                     Ok(left && right)
                 }
                 Operator::Or => {
-                    let left = self.left.as_ref().unwrap().try_borrow_mut();
-                    if left.is_err() {
-                        return Ok(false);
-                    }
-                    let right = self.left.as_ref().unwrap().try_borrow_mut();
-                    if right.is_err() {
-                        return Ok(false);
-                    }
-                    let left = left.unwrap().resolve()?;
-                    let right = right.unwrap().resolve()?;
+                    let left =
+                        RefCell::borrow(self.left.as_ref().unwrap()).resolve(facts, visited)?;
+                    let right =
+                        RefCell::borrow(self.right.as_ref().unwrap()).resolve(facts, visited)?;
                     Ok(left || right)
                 }
                 Operator::Xor => {
-                    let left = self.left.as_ref().unwrap().try_borrow_mut();
-                    if left.is_err() {
-                        return Ok(false);
-                    }
-                    let right = self.left.as_ref().unwrap().try_borrow_mut();
-                    if right.is_err() {
-                        return Ok(false);
-                    }
-                    let left = left.unwrap().resolve()?;
-                    let right = right.unwrap().resolve()?;
+                    let left =
+                        RefCell::borrow(self.left.as_ref().unwrap()).resolve(facts, visited)?;
+                    let right =
+                        RefCell::borrow(self.right.as_ref().unwrap()).resolve(facts, visited)?;
                     Ok((left && !right) || (!left && right))
                 }
-                _ => Err("Invalid operator in resolve".to_string()),
-            }?;
-            return Ok(result);
+                Operator::Not => {
+                    let left =
+                        RefCell::borrow(self.left.as_ref().unwrap()).resolve(facts, visited)?;
+                    return Ok(!left);
+                }
+            };
+            visited.swap_remove(visited.iter().position(|id| *id == self.id).unwrap());
+            return result;
         } else if self.has_left() {
-            let left = self.left.as_ref().unwrap().try_borrow_mut();
-            if left.is_err() {
-                return Ok(false);
-            }
-            let result = left.unwrap().resolve()?;
+            let result = RefCell::borrow(self.left.as_ref().unwrap()).resolve(facts, visited)?;
+            visited.swap_remove(visited.iter().position(|id| *id == self.id).unwrap());
             return Ok(result);
         }
+        visited.swap_remove(visited.iter().position(|id| *id == self.id).unwrap());
         Err("Empty Node".to_string())
     }
 }

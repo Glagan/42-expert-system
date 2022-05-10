@@ -13,6 +13,7 @@ use std::{cell::RefCell, collections::HashMap, fs, rc::Rc};
 
 #[derive(Debug)]
 pub struct Input {
+    next_id: i64,
     pub facts: HashMap<char, Rc<RefCell<Fact>>>,
     pub rules: Vec<Rc<RefCell<Node>>>,
     pub initial_facts: Vec<char>,
@@ -105,6 +106,7 @@ fn queries(i: &str) -> IResult<&str, Vec<char>> {
 impl Input {
     pub fn new() -> Input {
         Input {
+            next_id: 1,
             facts: HashMap::new(),
             rules: vec![],
             initial_facts: vec![],
@@ -143,12 +145,15 @@ impl Input {
 
     fn fact_node(&mut self, symbol: &char) -> Rc<RefCell<Node>> {
         let fact = self.get_or_insert_fact(symbol);
-        Rc::new(RefCell::new(Node {
+        let node =Rc::new(RefCell::new(Node {
+            id: self.next_id,
             fact: Some(fact),
             left: None,
             right: None,
             operator: None,
-        }))
+        }));
+        self.next_id += 1;
+        node
     }
 
     pub fn parse_rule_block(&mut self, string: &str) -> Result<Rc<RefCell<Node>>, String> {
@@ -427,6 +432,7 @@ impl Input {
                 if let Ok((_, (left, op, right))) = result {
                     let (left, right) = prepare_rule(left, right)?;  
                     let rule = Rc::new(RefCell::new(Node {
+                        id: self.next_id,
                         fact: None,
                         left: Some(self.parse_rule_block(&left)?),
                         right: Some(self.parse_rule_block(&right)?),
@@ -436,6 +442,7 @@ impl Input {
                             Some(Operator::IfAndOnlyIf)
                         },
                     }));
+                    self.next_id += 1;
                     let rule_ref = RefCell::borrow(&rule);
                     if rule_ref.operator_eq(&Operator::IfAndOnlyIf) {
                         for fact in RefCell::borrow(rule_ref.left.as_ref().unwrap()).all_facts().iter() {

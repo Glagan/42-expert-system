@@ -1,8 +1,7 @@
-use std::process;
-
 use clap::{arg, command};
-
 use colored::Colorize;
+use std::{collections::HashMap, process};
+
 mod input;
 use input::Input;
 mod node;
@@ -30,14 +29,16 @@ fn main() {
 
     // Create an inference engine for the Input and resolve all queries
     for query in input.queries.clone().iter() {
+        let mut tmp_facts: HashMap<char, bool> = HashMap::new();
+        let mut visited: Vec<i64> = vec![];
         // let mut path: Vec<String> = vec![];
         let result = input
             .facts
             .get_mut(query)
             .unwrap()
             .as_ref()
-            .borrow_mut()
-            .resolve();
+            .borrow()
+            .resolve(&mut tmp_facts, &mut visited);
         if let Ok(result) = result {
             println!(
                 "{}{} {}",
