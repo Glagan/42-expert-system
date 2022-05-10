@@ -1,3 +1,4 @@
+use colored::Colorize;
 use std::{
     cell::RefCell,
     collections::HashMap,
@@ -178,10 +179,18 @@ impl Node {
 
     pub fn print_short(&self) {
         if self.has_fact() {
-            if self.operator_eq(&Operator::Not) {
-                print!("!{}", RefCell::borrow(self.fact.as_ref().unwrap()).repr);
+            let repr = if RefCell::borrow(self.fact.as_ref().unwrap()).resolved {
+                format!(
+                    "{}",
+                    format!("{}", RefCell::borrow(self.fact.as_ref().unwrap()).repr).green()
+                )
             } else {
-                print!("{}", RefCell::borrow(self.fact.as_ref().unwrap()).repr);
+                format!("{}", RefCell::borrow(self.fact.as_ref().unwrap()).repr)
+            };
+            if self.operator_eq(&Operator::Not) {
+                print!("!{}", repr);
+            } else {
+                print!("{}", repr);
             }
         } else if self.has_operator() {
             if !self.operator_eq(&Operator::Implies) && !self.operator_eq(&Operator::IfAndOnlyIf) {
@@ -225,10 +234,6 @@ impl Node {
         }
         visited.push(self.id);
         if self.fact.is_some() {
-            println!(
-                "checking fact {}",
-                RefCell::borrow(self.fact.as_ref().unwrap()).repr
-            );
             let result = RefCell::borrow(self.fact.as_ref().unwrap()).resolve(facts, visited)?;
             if self.operator_eq(&Operator::Not) {
                 visited.swap_remove(visited.iter().position(|id| *id == self.id).unwrap());
@@ -241,18 +246,18 @@ impl Node {
                 Operator::Implies => {
                     let result =
                         RefCell::borrow(self.left.as_ref().unwrap()).resolve(facts, visited)?;
-                    // TODO Handle operators in conclusions
-                    // if result {
-                    //     return RefCell::borrow(self.right.as_ref().unwrap())
-                    //         .resolve(facts, visited);
-                    // }
-                    Ok(result)
+                    RefCell::borrow(self.right.as_ref().unwrap()).resolve_conclusion(result, facts)
                 }
                 Operator::IfAndOnlyIf => {
                     let left =
                         RefCell::borrow(self.left.as_ref().unwrap()).resolve(facts, visited)?;
                     let right =
                         RefCell::borrow(self.right.as_ref().unwrap()).resolve(facts, visited)?;
+                    // TODO Resolve conclusion on both sides ? Always set to true if true
+                    // if left && right {
+                    //     RefCell::borrow(self.right.as_ref().unwrap())
+                    //         .resolve_conclusion(result, facts, visited)
+                    // }
                     Ok(left && right)
                 }
                 Operator::And => {
@@ -290,6 +295,59 @@ impl Node {
             return Ok(result);
         }
         visited.swap_remove(visited.iter().position(|id| *id == self.id).unwrap());
+        Err("Empty Node".to_string())
+    }
+
+    pub fn resolve_conclusion(
+        &self,
+        result: bool,
+        facts: &mut HashMap<char, bool>,
+    ) -> Result<bool, String> {
+        if self.fact.is_some() {
+            if self.operator_eq(&Operator::Not) {
+                facts.insert(RefCell::borrow(self.fact.as_ref().unwrap()).repr, !result);
+                return Ok(!result);
+            }
+            facts.insert(RefCell::borrow(self.fact.as_ref().unwrap()).repr, result);
+            return Ok(result);
+        } else if let Some(op) = &self.operator {
+            let result = match op {
+                Operator::And => {
+                    RefCell::borrow(self.left.as_ref().unwrap())
+                        .resolve_conclusion(result, facts)?;
+                    RefCell::borrow(self.right.as_ref().unwrap())
+                        .resolve_conclusion(result, facts)?;
+                    Ok(result)
+                }
+                Operator::Or => {
+                    // TODO Check ambiguous
+                    RefCell::borrow(self.left.as_ref().unwrap())
+                        .resolve_conclusion(result, facts)?;
+                    RefCell::borrow(self.right.as_ref().unwrap())
+                        .resolve_conclusion(result, facts)?;
+                    Ok(result)
+                }
+                Operator::Xor => {
+                    // TODO Check ambiguous
+                    RefCell::borrow(self.left.as_ref().unwrap())
+                        .resolve_conclusion(result, facts)?;
+                    RefCell::borrow(self.right.as_ref().unwrap())
+                        .resolve_conclusion(result, facts)?;
+                    Ok(result)
+                }
+                Operator::Not => {
+                    let left = RefCell::borrow(self.left.as_ref().unwrap())
+                        .resolve_conclusion(false, facts)?;
+                    return Ok(!left);
+                }
+                _ => Err("Unallowed operator in conclusion".to_string()),
+            }?;
+            return Ok(result);
+        } else if self.has_left() {
+            let result =
+                RefCell::borrow(self.left.as_ref().unwrap()).resolve_conclusion(result, facts)?;
+            return Ok(result);
+        }
         Err("Empty Node".to_string())
     }
 }
