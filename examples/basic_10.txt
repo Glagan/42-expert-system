@@ -1,0 +1,9 @@
+# This example works
+
+A + B => C
+C ^ D => E
+E | F => G
+(G + H) ^ (I | J) => K
+
+=AB
+?K
