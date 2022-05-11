@@ -7,7 +7,7 @@ E | F => G
 (G + H) ^ (I | J) => K
 # K true if G + H and !I or !J, or I or J and !(G and H)
 
-=AB
+=ABH
 ?K
 
-# K true if =AB
+# K true if =ABH, =I or =J
