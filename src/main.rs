@@ -1,9 +1,9 @@
 use clap::{arg, command};
 use colored::Colorize;
 
-mod input;
+pub mod input;
 use input::Input;
-mod node;
+pub mod node;
 
 fn main() {
     let matches = command!()
@@ -47,7 +47,9 @@ fn main() {
                 .borrow()
                 .resolve(&mut path);
             if matches.is_present("visualize") {
-                path.iter().map(|path| println!("{}", path)).for_each(drop);
+                path.iter()
+                    .map(|path| println!("{}  {}", "?".purple().on_black(), path))
+                    .for_each(drop);
             }
             if let Ok(result) = result {
                 println!(

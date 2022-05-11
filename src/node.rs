@@ -24,7 +24,7 @@ pub struct Fact {
 }
 
 impl Fact {
-    pub fn set(&mut self, value: bool) {
+    pub fn set(&self, value: bool) {
         *self.value.borrow_mut() = value;
         *self.resolved.borrow_mut() = true;
     }
@@ -297,6 +297,7 @@ impl Node {
 
     pub fn resolve_conclusion(&self, result: bool) -> Result<bool, String> {
         if self.fact.is_some() {
+            RefCell::borrow(&self.fact.as_ref().unwrap()).set(result);
             if self.operator_eq(&Operator::Not) {
                 return Ok(!result);
             }
