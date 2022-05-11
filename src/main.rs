@@ -1,6 +1,5 @@
 use clap::{arg, command};
 use colored::Colorize;
-use std::process;
 
 mod input;
 use input::Input;
@@ -9,53 +8,57 @@ mod node;
 fn main() {
     let matches = command!()
         .arg(
-            arg!(<input_file> "Path to the input file")
+            arg!(<file_paths> "Path to the input file(s)")
                 .takes_value(true)
-                .multiple_values(false)
+                .multiple_values(true)
                 .forbid_empty_values(true),
         )
         .get_matches();
 
     // Parse input and convert the rules to a tree
-    let input_file_path = matches.value_of("input_file").unwrap();
-    let mut input = Input::new();
-    input.load_file(input_file_path).unwrap_or_else(|error| {
-        eprintln!("Failed to parse input file: {}", error);
-        process::exit(1);
-    });
-    input.show_warnings();
-    input.show_rules();
-    input.show_initial_facts();
+    let file_paths: Vec<_> = matches.values_of("file_paths").unwrap().collect();
+    for file_path in file_paths {
+        println!("{}", format!("#  {}", file_path).black().on_white());
+        let mut input = Input::new();
+        let load_result = input.load_file(file_path);
+        if load_result.is_err() {
+            eprintln!("Failed to parse input file: {}", load_result.unwrap_err());
+            continue;
+        }
+        input.show_warnings();
+        input.show_rules();
+        input.show_initial_facts();
 
-    // Create an inference engine for the Input and resolve all queries
-    for query in input.queries.clone().iter() {
-        let mut path: Vec<i64> = vec![];
-        // let mut path: Vec<String> = vec![];
-        let result = input
-            .facts
-            .get_mut(query)
-            .unwrap()
-            .as_ref()
-            .borrow()
-            .resolve(&mut path);
-        if let Ok(result) = result {
-            println!(
-                "{}{} {}",
-                "?".normal().on_purple(),
-                format!("{}", query).bright_cyan().on_purple(),
-                if result {
-                    format!("{}", "true".cyan())
-                } else {
-                    format!("{}", "false".yellow())
-                }
-            );
-        } else {
-            println!(
-                "{}{} {}",
-                "?".normal().on_purple(),
-                format!("{}", query).bright_cyan().on_purple(),
-                result.unwrap_err().to_string().red().on_yellow()
-            );
+        // Create an inference engine for the Input and resolve all queries
+        for query in input.queries.clone().iter() {
+            let mut path: Vec<i64> = vec![];
+            // let mut path: Vec<String> = vec![];
+            let result = input
+                .facts
+                .get_mut(query)
+                .unwrap()
+                .as_ref()
+                .borrow()
+                .resolve(&mut path);
+            if let Ok(result) = result {
+                println!(
+                    "{}{} {}",
+                    "?".normal().on_purple(),
+                    format!("{}", query).bright_cyan().on_purple(),
+                    if result {
+                        format!("{}", "true".cyan())
+                    } else {
+                        format!("{}", "false".yellow())
+                    }
+                );
+            } else {
+                println!(
+                    "{}{} {}",
+                    "?".normal().on_purple(),
+                    format!("{}", query).bright_cyan().on_purple(),
+                    result.unwrap_err().to_string().red()
+                );
+            }
         }
     }
 }

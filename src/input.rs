@@ -1,4 +1,4 @@
-use crate::node::{Fact, Operator, Node};
+use crate::node::{Fact, Node, Operator};
 use colored::Colorize;
 use nom::{
     branch::alt,
@@ -125,16 +125,17 @@ impl Input {
         Ok(())
     }
 
-    fn get_or_insert_fact(&mut  self, symbol: &char) -> Rc<RefCell<Fact>> {
+    fn get_or_insert_fact(&mut self, symbol: &char) -> Rc<RefCell<Fact>> {
         let fact = self.facts.get(symbol);
         if fact.is_none() {
-            self.facts.insert(*symbol,
+            self.facts.insert(
+                *symbol,
                 Rc::new(RefCell::new(Fact {
                     repr: *symbol,
                     value: RefCell::new(false),
                     resolved: RefCell::new(false),
-                    rules:vec![]
-                }))
+                    rules: vec![],
+                })),
             );
             return Rc::clone(self.facts.get(symbol).unwrap());
         }
@@ -247,7 +248,9 @@ impl Input {
             } else if c == '+' || c == '|' || c == '^' {
                 // Set the operator of the current symbol or create a new one
                 if RefCell::borrow(&current_symbol).has_operator() {
-                    if RefCell::borrow(&current_symbol).has_left() && RefCell::borrow(&current_symbol).has_right() {
+                    if RefCell::borrow(&current_symbol).has_left()
+                        && RefCell::borrow(&current_symbol).has_right()
+                    {
                         // If the current symbol is full create new symbol with the nested previous
                         // -- Check for operator priority
                         let new_operator = Node::match_operator(c).unwrap();
@@ -256,7 +259,9 @@ impl Input {
                         // -- and the new nested symbol is set as the current symbol
                         if new_operator < RefCell::borrow(&current_symbol).operator.unwrap() {
                             let new_symbol = Rc::new(RefCell::new(Node::new()));
-                            new_symbol.borrow_mut().left = Some(Rc::clone(RefCell::borrow(&current_symbol).right.as_ref().unwrap()));
+                            new_symbol.borrow_mut().left = Some(Rc::clone(
+                                RefCell::borrow(&current_symbol).right.as_ref().unwrap(),
+                            ));
                             new_symbol.borrow_mut().operator = Some(new_operator);
                             current_symbol.borrow_mut().right = Some(Rc::clone(&new_symbol));
                             upper_symbols.push(Rc::clone(&current_symbol));
@@ -290,7 +295,7 @@ impl Input {
                 } else {
                     if !RefCell::borrow(&current_symbol).has_left() {
                         if RefCell::borrow(&current_symbol).has_fact() {
-                            let symbol_ref= current_symbol.borrow();
+                            let symbol_ref = current_symbol.borrow();
                             let fact_ref = Rc::clone(symbol_ref.fact.as_ref().unwrap());
                             let fact = RefCell::borrow(&fact_ref);
                             drop(symbol_ref);
@@ -316,10 +321,11 @@ impl Input {
                         let last = upper_symbols.pop().unwrap();
                         current_symbol = Rc::clone(&last);
                     }
-                } else if !RefCell::borrow(&current_symbol).has_fact() &&
-                        !RefCell::borrow(&current_symbol).has_left() &&
-                        !RefCell::borrow(&current_symbol).has_right() &&
-                        !RefCell::borrow(&current_symbol).has_operator() {
+                } else if !RefCell::borrow(&current_symbol).has_fact()
+                    && !RefCell::borrow(&current_symbol).has_left()
+                    && !RefCell::borrow(&current_symbol).has_right()
+                    && !RefCell::borrow(&current_symbol).has_operator()
+                {
                     current_symbol.borrow_mut().fact = Some(self.get_or_insert_fact(&c));
                 } else {
                     current_symbol.borrow_mut().left = Some(self.fact_node(&c));
@@ -345,8 +351,8 @@ impl Input {
         // Check incomplete current_symbol
         let has_upper_symbols = upper_symbols.is_empty();
         if
-            // Missing right side on root symbol with operator
-            (!has_upper_symbols
+        // Missing right side on root symbol with operator
+        (!has_upper_symbols
                 && RefCell::borrow(&current_symbol).has_left()
                 && !RefCell::borrow(&current_symbol).has_operator())
             ||
@@ -382,7 +388,6 @@ impl Input {
         let mut parsed_initial_facts = false;
         let mut parsed_queries = false;
 
-
         for (line_number, line) in content.lines().enumerate() {
             let line = line.trim();
             // Ignore empty lines and lines with only a comment
@@ -403,16 +408,14 @@ impl Input {
                     // Check if each queries are not duplicate and exist in rules or initial facts
                     for query in queries.iter() {
                         if self.queries.contains(query) {
-                            self
-                                .warnings
+                            self.warnings
                                 .push(format!("Duplicate query for fact {}", query));
                         } else {
                             self.queries.push(*query);
                         }
                         if !self.facts.contains_key(query) {
                             self.fact_node(query);
-                            self
-                                .warnings
+                            self.warnings
                                 .push(format!("Query for missing fact {}", query));
                         }
                     }
@@ -440,11 +443,17 @@ impl Input {
                     }));
                     let rule_ref = RefCell::borrow(&rule);
                     if rule_ref.operator_eq(&Operator::IfAndOnlyIf) {
-                        for fact in RefCell::borrow(rule_ref.left.as_ref().unwrap()).all_facts().iter() {
+                        for fact in RefCell::borrow(rule_ref.left.as_ref().unwrap())
+                            .all_facts()
+                            .iter()
+                        {
                             RefCell::borrow_mut(fact).rules.push(Rc::clone(&rule));
                         }
                     }
-                    for fact in RefCell::borrow(rule_ref.right.as_ref().unwrap()).all_facts().iter() {
+                    for fact in RefCell::borrow(rule_ref.right.as_ref().unwrap())
+                        .all_facts()
+                        .iter()
+                    {
                         RefCell::borrow_mut(fact).rules.push(Rc::clone(&rule));
                     }
                     self.rules.push(Rc::clone(&rule));
@@ -465,16 +474,14 @@ impl Input {
                     for symbol in initial_facts.iter() {
                         // Check if each initial facts are not duplicated
                         if self.initial_facts.contains(symbol) {
-                            self
-                                .warnings
+                            self.warnings
                                 .push(format!("Duplicate initial fact for symbol {}", symbol));
                         } else if !self.initial_facts.contains(symbol) {
                             self.initial_facts.push(*symbol);
                             self.get_or_insert_fact(symbol).borrow_mut().set(true);
                         }
                         if !self.facts.contains_key(symbol) {
-                            self
-                                .warnings
+                            self.warnings
                                 .push(format!("Unused Initial fact {}", symbol));
                             self.get_or_insert_fact(symbol).borrow_mut().set(true);
                         }
@@ -514,7 +521,7 @@ impl Input {
 
     pub fn show_warnings(&self) {
         for warning in self.warnings.iter() {
-            println!("{} {}", "!".red().on_yellow(), warning.yellow());
+            println!("{}  {}", "!".red().on_yellow(), warning.yellow());
         }
     }
 
@@ -527,7 +534,7 @@ impl Input {
     }
 
     pub fn show_initial_facts(&self) {
-        print!("{}  ", "=".normal().on_purple());
+        print!("{}  ", "=".normal().on_green());
         if !self.initial_facts.is_empty() {
             for repr in self.initial_facts.iter() {
                 print!("{}", format!("{}", repr).green());
@@ -538,7 +545,6 @@ impl Input {
         println!();
     }
 }
-
 
 #[test]
 fn handle_parsing_error_1() {
