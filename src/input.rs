@@ -13,7 +13,6 @@ use std::{cell::RefCell, collections::HashMap, fs, rc::Rc};
 
 #[derive(Debug)]
 pub struct Input {
-    next_id: i64,
     pub facts: HashMap<char, Rc<RefCell<Fact>>>,
     pub rules: Vec<Rc<RefCell<Node>>>,
     pub initial_facts: Vec<char>,
@@ -106,7 +105,6 @@ fn queries(i: &str) -> IResult<&str, Vec<char>> {
 impl Input {
     pub fn new() -> Input {
         Input {
-            next_id: 1,
             facts: HashMap::new(),
             rules: vec![],
             initial_facts: vec![],
@@ -115,7 +113,7 @@ impl Input {
         }
     }
 
-    pub fn load_file(&mut self, file_path: &str) -> Result<(), String> { 
+    pub fn load_file(&mut self, file_path: &str) -> Result<(), String> {
         let content = fs::read_to_string(file_path);
         if let Err(e) = content {
             return Err(e.to_string());
@@ -127,33 +125,31 @@ impl Input {
         Ok(())
     }
 
-    fn get_or_insert_fact(&mut  self, symbol: &char) -> Rc<RefCell<Fact>> { 
+    fn get_or_insert_fact(&mut  self, symbol: &char) -> Rc<RefCell<Fact>> {
         let fact = self.facts.get(symbol);
         if fact.is_none() {
-            self.facts.insert(*symbol, 
+            self.facts.insert(*symbol,
                 Rc::new(RefCell::new(Fact {
                     repr: *symbol,
-                    value: false,
-                    resolved: false,
+                    value: RefCell::new(false),
+                    resolved: RefCell::new(false),
                     rules:vec![]
                 }))
             );
-            return Rc::clone(self.facts.get(symbol).unwrap()); 
+            return Rc::clone(self.facts.get(symbol).unwrap());
         }
         Rc::clone(fact.unwrap())
     }
 
     fn fact_node(&mut self, symbol: &char) -> Rc<RefCell<Node>> {
         let fact = self.get_or_insert_fact(symbol);
-        let node =Rc::new(RefCell::new(Node {
-            id: self.next_id,
+        Rc::new(RefCell::new(Node {
+            visited: RefCell::new(false),
             fact: Some(fact),
             left: None,
             right: None,
             operator: None,
-        }));
-        self.next_id += 1;
-        node
+        }))
     }
 
     pub fn parse_rule_block(&mut self, string: &str) -> Result<Rc<RefCell<Node>>, String> {
@@ -248,17 +244,17 @@ impl Input {
                         i + 1
                     ));
                 }
-            } else if c == '+' || c == '|' || c == '^' { 
+            } else if c == '+' || c == '|' || c == '^' {
                 // Set the operator of the current symbol or create a new one
                 if RefCell::borrow(&current_symbol).has_operator() {
-                    if RefCell::borrow(&current_symbol).has_left() && RefCell::borrow(&current_symbol).has_right() { 
+                    if RefCell::borrow(&current_symbol).has_left() && RefCell::borrow(&current_symbol).has_right() {
                         // If the current symbol is full create new symbol with the nested previous
                         // -- Check for operator priority
                         let new_operator = Node::match_operator(c).unwrap();
                         // -- If an operator has "more" priority
                         // -- the right side of the current symbol is inserted on a new symbol with the new operator
                         // -- and the new nested symbol is set as the current symbol
-                        if new_operator < RefCell::borrow(&current_symbol).operator.unwrap() { 
+                        if new_operator < RefCell::borrow(&current_symbol).operator.unwrap() {
                             let new_symbol = Rc::new(RefCell::new(Node::new()));
                             new_symbol.borrow_mut().left = Some(Rc::clone(RefCell::borrow(&current_symbol).right.as_ref().unwrap()));
                             new_symbol.borrow_mut().operator = Some(new_operator);
@@ -299,7 +295,7 @@ impl Input {
                             let fact = RefCell::borrow(&fact_ref);
                             drop(symbol_ref);
                             current_symbol.borrow_mut().left = Some(self.fact_node(&fact.repr));
-                            current_symbol.borrow_mut().fact = None;            
+                            current_symbol.borrow_mut().fact = None;
                         } else {
                             return Err(format!(
                                 "Adding operator to empty symbol in block `{}` column {}",
@@ -348,18 +344,18 @@ impl Input {
 
         // Check incomplete current_symbol
         let has_upper_symbols = upper_symbols.is_empty();
-        if 
+        if
             // Missing right side on root symbol with operator
             (!has_upper_symbols
                 && RefCell::borrow(&current_symbol).has_left()
                 && !RefCell::borrow(&current_symbol).has_operator())
-            || 
+            ||
             // Empty symbol
             (!has_upper_symbols
                 && !RefCell::borrow(&current_symbol).has_fact()
                 && !RefCell::borrow(&current_symbol).has_left()
                 && !RefCell::borrow(&current_symbol).has_right())
-            || 
+            ||
             // Nested symbol has missing right side -- missing right side on root is allowed
             (has_upper_symbols
                 && RefCell::borrow(&current_symbol).has_left()
@@ -430,9 +426,9 @@ impl Input {
             else {
                 let result = rule(line);
                 if let Ok((_, (left, op, right))) = result {
-                    let (left, right) = prepare_rule(left, right)?;  
+                    let (left, right) = prepare_rule(left, right)?;
                     let rule = Rc::new(RefCell::new(Node {
-                        id: self.next_id,
+                        visited: RefCell::new(false),
                         fact: None,
                         left: Some(self.parse_rule_block(&left)?),
                         right: Some(self.parse_rule_block(&right)?),
@@ -442,13 +438,12 @@ impl Input {
                             Some(Operator::IfAndOnlyIf)
                         },
                     }));
-                    self.next_id += 1;
                     let rule_ref = RefCell::borrow(&rule);
                     if rule_ref.operator_eq(&Operator::IfAndOnlyIf) {
                         for fact in RefCell::borrow(rule_ref.left.as_ref().unwrap()).all_facts().iter() {
                             RefCell::borrow_mut(fact).rules.push(Rc::clone(&rule));
                         }
-                    } 
+                    }
                     for fact in RefCell::borrow(rule_ref.right.as_ref().unwrap()).all_facts().iter() {
                         RefCell::borrow_mut(fact).rules.push(Rc::clone(&rule));
                     }
