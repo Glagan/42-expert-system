@@ -41,7 +41,7 @@ fn main() {
             // let mut path: Vec<String> = vec![];
             let result = input
                 .facts
-                .get_mut(query)
+                .get(query)
                 .unwrap()
                 .as_ref()
                 .borrow()

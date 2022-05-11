@@ -230,7 +230,7 @@ impl Node {
 
     pub fn resolve(&self, path: &mut Vec<String>) -> Result<bool, String> {
         if *self.visited.borrow() {
-            return Err("Infinite rule".to_string());
+            return Err(format!("Infinite rule {}", self));
         }
         *self.visited.borrow_mut() = true;
         if self.fact.is_some() {
@@ -246,7 +246,11 @@ impl Node {
             let result = match op {
                 Operator::Implies => {
                     let result = RefCell::borrow(self.left.as_ref().unwrap()).resolve(path)?;
-                    RefCell::borrow(self.right.as_ref().unwrap()).resolve_conclusion(result)
+                    if result {
+                        RefCell::borrow(self.right.as_ref().unwrap()).resolve_conclusion(result)
+                    } else {
+                        Ok(false)
+                    }
                 }
                 Operator::IfAndOnlyIf => {
                     let left = RefCell::borrow(self.left.as_ref().unwrap()).resolve(path)?;
@@ -262,17 +266,19 @@ impl Node {
                     let left = RefCell::borrow(self.left.as_ref().unwrap()).resolve(path)?;
                     if left {
                         let right = RefCell::borrow(self.right.as_ref().unwrap()).resolve(path)?;
-                        return Ok(left && right);
+                        Ok(left && right)
+                    } else {
+                        Ok(false)
                     }
-                    return Ok(false);
                 }
                 Operator::Or => {
                     let left = RefCell::borrow(self.left.as_ref().unwrap()).resolve(path)?;
                     if left {
-                        return Ok(left);
+                        Ok(left)
+                    } else {
+                        let right = RefCell::borrow(self.right.as_ref().unwrap()).resolve(path)?;
+                        Ok(right)
                     }
-                    let right = RefCell::borrow(self.right.as_ref().unwrap()).resolve(path)?;
-                    Ok(right)
                 }
                 Operator::Xor => {
                     let left = RefCell::borrow(self.left.as_ref().unwrap()).resolve(path)?;
@@ -281,7 +287,7 @@ impl Node {
                 }
                 Operator::Not => {
                     let left = RefCell::borrow(self.left.as_ref().unwrap()).resolve(path)?;
-                    return Ok(!left);
+                    Ok(!left)
                 }
             };
             *self.visited.borrow_mut() = false;
@@ -323,8 +329,8 @@ impl Node {
                 }
                 Operator::Not => {
                     let left =
-                        RefCell::borrow(self.left.as_ref().unwrap()).resolve_conclusion(false)?;
-                    return Ok(!left);
+                        RefCell::borrow(self.left.as_ref().unwrap()).resolve_conclusion(result)?;
+                    Ok(!left)
                 }
                 _ => Err("Unallowed operator in conclusion".to_string()),
             }?;

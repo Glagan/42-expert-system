@@ -384,7 +384,7 @@ impl Input {
         Ok(current_symbol)
     }
 
-    fn parse_content(&mut self, content: &str) -> Result<(), String> {
+    pub fn parse_content(&mut self, content: &str) -> Result<(), String> {
         let mut parsed_initial_facts = false;
         let mut parsed_queries = false;
 
