@@ -29,8 +29,17 @@ impl Fact {
         *self.resolved.borrow_mut() = true;
     }
 
-    pub fn resolve(&self, path: &mut Vec<i64>) -> Result<bool, String> {
+    pub fn resolve(&self, path: &mut Vec<String>) -> Result<bool, String> {
         if *self.resolved.borrow() {
+            path.push(format!(
+                "{} is {}",
+                self.repr,
+                if *self.value.borrow() {
+                    "true".cyan()
+                } else {
+                    "false".yellow()
+                }
+            ));
             return Ok(*self.value.borrow());
         }
         *self.resolved.borrow_mut() = true;
@@ -39,10 +48,12 @@ impl Fact {
                 let result = RefCell::borrow(rule).resolve(path)?;
                 if result {
                     *self.value.borrow_mut() = result;
+                    path.push(format!("{} is {}", self.repr, "true".cyan()));
                     return Ok(result);
                 }
             }
         }
+        path.push(format!("{} is {}", self.repr, "false".yellow()));
         Ok(*self.value.borrow())
     }
 }
@@ -217,7 +228,7 @@ impl Node {
         }
     }
 
-    pub fn resolve(&self, path: &mut Vec<i64>) -> Result<bool, String> {
+    pub fn resolve(&self, path: &mut Vec<String>) -> Result<bool, String> {
         if *self.visited.borrow() {
             return Err("Infinite rule".to_string());
         }
@@ -231,6 +242,7 @@ impl Node {
             *self.visited.borrow_mut() = false;
             return Ok(result);
         } else if let Some(op) = &self.operator {
+            path.push(self.to_string());
             let result = match op {
                 Operator::Implies => {
                     let result = RefCell::borrow(self.left.as_ref().unwrap()).resolve(path)?;
@@ -248,13 +260,19 @@ impl Node {
                 }
                 Operator::And => {
                     let left = RefCell::borrow(self.left.as_ref().unwrap()).resolve(path)?;
-                    let right = RefCell::borrow(self.right.as_ref().unwrap()).resolve(path)?;
-                    Ok(left && right)
+                    if left {
+                        let right = RefCell::borrow(self.right.as_ref().unwrap()).resolve(path)?;
+                        return Ok(left && right);
+                    }
+                    return Ok(false);
                 }
                 Operator::Or => {
                     let left = RefCell::borrow(self.left.as_ref().unwrap()).resolve(path)?;
+                    if left {
+                        return Ok(left);
+                    }
                     let right = RefCell::borrow(self.right.as_ref().unwrap()).resolve(path)?;
-                    Ok(left || right)
+                    Ok(right)
                 }
                 Operator::Xor => {
                     let left = RefCell::borrow(self.left.as_ref().unwrap()).resolve(path)?;

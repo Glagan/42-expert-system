@@ -13,6 +13,12 @@ fn main() {
                 .multiple_values(true)
                 .forbid_empty_values(true),
         )
+        .arg(
+            arg!(-v --visualize ... "Visualize the path to resolve a query")
+                .required(false)
+                .takes_value(false)
+                .multiple_values(false),
+        )
         .get_matches();
 
     // Parse input and convert the rules to a tree
@@ -31,7 +37,7 @@ fn main() {
 
         // Create an inference engine for the Input and resolve all queries
         for query in input.queries.clone().iter() {
-            let mut path: Vec<i64> = vec![];
+            let mut path: Vec<String> = vec![];
             // let mut path: Vec<String> = vec![];
             let result = input
                 .facts
@@ -40,6 +46,9 @@ fn main() {
                 .as_ref()
                 .borrow()
                 .resolve(&mut path);
+            if matches.is_present("visualize") {
+                path.iter().map(|path| println!("{}", path)).for_each(drop);
+            }
             if let Ok(result) = result {
                 println!(
                     "{}{} {}",

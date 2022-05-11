@@ -414,9 +414,9 @@ impl Input {
                             self.queries.push(*query);
                         }
                         if !self.facts.contains_key(query) {
-                            self.fact_node(query);
                             self.warnings
                                 .push(format!("Query for missing fact {}", query));
+                            self.get_or_insert_fact(query).borrow_mut().set(false);
                         }
                     }
                     parsed_queries = true
