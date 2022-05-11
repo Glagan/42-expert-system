@@ -1,6 +1,6 @@
 # This example does not work
 
-A => A 
+A => A
 
 =A
 ?B

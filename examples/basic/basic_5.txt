@@ -1,6 +1,9 @@
 # This example works
 
 A => B
+A + B => C
 
-=AA
-?BC
+=A
+?C
+
+# C true

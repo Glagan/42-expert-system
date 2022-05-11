@@ -5,3 +5,5 @@ C => !B
 
 =
 ?B
+
+# B true if =A else always false

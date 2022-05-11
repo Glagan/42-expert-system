@@ -11,3 +11,6 @@ N => M
 
 =DEIJP
 ?AFKP
+
+# AFKP true with =DEIJOP
+# AFP true and K false with =DEIJP

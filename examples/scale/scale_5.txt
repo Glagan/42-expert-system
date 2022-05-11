@@ -1,0 +1,12 @@
+# This example works
+
+B => A
+C => A
+
+=
+?A
+
+# A false if =
+# A true if =B
+# A true if =C
+# A true if =BC

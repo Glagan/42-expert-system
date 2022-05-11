@@ -1,0 +1,8 @@
+# This example works
+
+A | B => C
+
+=A
+?ABC
+
+# C true if either =A or =B

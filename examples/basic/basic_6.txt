@@ -4,3 +4,5 @@ A => !B
 
 =A
 ?B
+
+# B is always false

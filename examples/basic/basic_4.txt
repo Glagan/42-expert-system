@@ -3,5 +3,7 @@
 A => B
 E => B
 
-=A
-?BE
+=E
+?ABE
+
+# B true if either =A or =B

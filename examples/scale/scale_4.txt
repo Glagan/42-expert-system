@@ -1,0 +1,11 @@
+# This example works
+
+B + !C => A
+
+=
+?A
+
+# A false if =
+# A true if =B
+# A false if =C
+# A false if =BC
