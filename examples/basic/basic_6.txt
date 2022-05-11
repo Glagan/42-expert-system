@@ -2,7 +2,7 @@
 
 A => !B
 
-=A
+=
 ?B
 
-# B is always false
+# B true if =A else false

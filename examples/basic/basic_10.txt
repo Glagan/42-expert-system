@@ -1,0 +1,8 @@
+# This example works
+
+(A|(A|(A|(A|(A|(A)|C)|A)|A)|A)|A)|A => B
+
+=A
+?B
+
+# B true if =A
