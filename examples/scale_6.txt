@@ -1,7 +1,7 @@
 # This example works
 
-A | B + C => E 
-(F | G) + H => E 
+A | B + C => E
+(F | G) + H => E
 
 =
 ?E
