@@ -15,27 +15,59 @@ pub enum Operator {
     IfAndOnlyIf,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum Resolve {
+    True,
+    Ambiguous,
+    False,
+}
+
+impl Resolve {
+    pub fn not(&self) -> Resolve {
+        if *self == Resolve::True {
+            return Resolve::False;
+        } else if *self == Resolve::False {
+            return Resolve::True;
+        }
+        Resolve::Ambiguous
+    }
+
+    pub fn is_true(&self) -> bool {
+        *self == Resolve::True
+    }
+
+    pub fn is_ambiguous(&self) -> bool {
+        *self == Resolve::Ambiguous
+    }
+
+    pub fn is_false(&self) -> bool {
+        *self == Resolve::False
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Fact {
     pub repr: char,
-    pub value: RefCell<bool>,
+    pub value: RefCell<Resolve>,
     pub resolved: RefCell<bool>,
     pub rules: Vec<Rc<RefCell<Node>>>,
 }
 
 impl Fact {
-    pub fn set(&self, value: bool) {
+    pub fn set(&self, value: Resolve) {
         *self.value.borrow_mut() = value;
         *self.resolved.borrow_mut() = true;
     }
 
-    pub fn resolve(&self, path: &mut Vec<String>) -> Result<bool, String> {
+    pub fn resolve(&self, path: &mut Vec<String>) -> Result<Resolve, String> {
         if *self.resolved.borrow() {
             path.push(format!(
                 "{} is {}",
                 self.repr,
-                if *self.value.borrow() {
+                if *self.value.borrow() == Resolve::True {
                     "true".cyan()
+                } else if *self.value.borrow() == Resolve::Ambiguous {
+                    "ambiguous".purple()
                 } else {
                     "false".yellow()
                 }
@@ -46,7 +78,7 @@ impl Fact {
         if !self.rules.is_empty() {
             for rule in self.rules.iter() {
                 let result = RefCell::borrow(rule).resolve(path)?;
-                if result {
+                if result.is_true() {
                     *self.value.borrow_mut() = result;
                     path.push(format!("{} is {}", self.repr, "true".cyan()));
                     return Ok(result);
@@ -104,6 +136,12 @@ impl fmt::Display for Node {
             }
         }
         Ok(())
+    }
+}
+
+impl Default for Node {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -228,7 +266,7 @@ impl Node {
         }
     }
 
-    pub fn resolve(&self, path: &mut Vec<String>) -> Result<bool, String> {
+    pub fn resolve(&self, path: &mut Vec<String>) -> Result<Resolve, String> {
         if *self.visited.borrow() {
             return Err(format!("Infinite rule {}", self));
         }
@@ -237,7 +275,7 @@ impl Node {
             let result = RefCell::borrow(self.fact.as_ref().unwrap()).resolve(path)?;
             if self.operator_eq(&Operator::Not) {
                 *self.visited.borrow_mut() = false;
-                return Ok(!result);
+                return Ok(result.not());
             }
             *self.visited.borrow_mut() = false;
             return Ok(result);
@@ -246,10 +284,10 @@ impl Node {
             let result = match op {
                 Operator::Implies => {
                     let result = RefCell::borrow(self.left.as_ref().unwrap()).resolve(path)?;
-                    if result {
+                    if result.is_true() {
                         RefCell::borrow(self.right.as_ref().unwrap()).resolve_conclusion(result)
                     } else {
-                        Ok(false)
+                        Ok(result)
                     }
                 }
                 Operator::IfAndOnlyIf => {
@@ -260,34 +298,52 @@ impl Node {
                     //     RefCell::borrow(self.right.as_ref().unwrap())
                     //         .resolve_conclusion(result,  visited)
                     // }
-                    Ok(left && right)
+                    if left.is_ambiguous() || right.is_ambiguous() {
+                        Ok(Resolve::Ambiguous)
+                    } else if left.is_true() && right.is_true() {
+                        Ok(Resolve::True)
+                    } else {
+                        Ok(Resolve::False)
+                    }
                 }
                 Operator::And => {
                     let left = RefCell::borrow(self.left.as_ref().unwrap()).resolve(path)?;
-                    if left {
-                        let right = RefCell::borrow(self.right.as_ref().unwrap()).resolve(path)?;
-                        Ok(left && right)
+                    let right = RefCell::borrow(self.right.as_ref().unwrap()).resolve(path)?;
+                    if left.is_ambiguous() || right.is_ambiguous() {
+                        Ok(Resolve::Ambiguous)
+                    } else if left.is_true() && right.is_true() {
+                        Ok(Resolve::True)
                     } else {
-                        Ok(false)
+                        Ok(Resolve::False)
                     }
                 }
                 Operator::Or => {
                     let left = RefCell::borrow(self.left.as_ref().unwrap()).resolve(path)?;
-                    if left {
-                        Ok(left)
+                    let right = RefCell::borrow(self.right.as_ref().unwrap()).resolve(path)?;
+                    if left.is_ambiguous() || right.is_ambiguous() {
+                        Ok(Resolve::Ambiguous)
+                    } else if left.is_true() || right.is_true() {
+                        Ok(Resolve::True)
                     } else {
-                        let right = RefCell::borrow(self.right.as_ref().unwrap()).resolve(path)?;
-                        Ok(right)
+                        Ok(Resolve::False)
                     }
                 }
                 Operator::Xor => {
                     let left = RefCell::borrow(self.left.as_ref().unwrap()).resolve(path)?;
                     let right = RefCell::borrow(self.right.as_ref().unwrap()).resolve(path)?;
-                    Ok((left && !right) || (!left && right))
+                    if left.is_ambiguous() || right.is_ambiguous() {
+                        Ok(Resolve::Ambiguous)
+                    } else if (left.is_true() && right.is_false())
+                        || (left.is_false() && right.is_true())
+                    {
+                        Ok(Resolve::True)
+                    } else {
+                        Ok(Resolve::False)
+                    }
                 }
                 Operator::Not => {
                     let left = RefCell::borrow(self.left.as_ref().unwrap()).resolve(path)?;
-                    Ok(!left)
+                    Ok(left.not())
                 }
             };
             *self.visited.borrow_mut() = false;
@@ -301,11 +357,12 @@ impl Node {
         Err("Empty Node".to_string())
     }
 
-    pub fn resolve_conclusion(&self, result: bool) -> Result<bool, String> {
+    // TODO Collect used Facts and set them to True *or* False if the result is not ambiguous
+    pub fn resolve_conclusion(&self, result: Resolve) -> Result<Resolve, String> {
         if self.fact.is_some() {
-            RefCell::borrow(&self.fact.as_ref().unwrap()).set(result);
+            RefCell::borrow(self.fact.as_ref().unwrap()).set(result);
             if self.operator_eq(&Operator::Not) {
-                return Ok(!result);
+                return Ok(result.not());
             }
             return Ok(result);
         } else if let Some(op) = &self.operator {
@@ -330,7 +387,7 @@ impl Node {
                 Operator::Not => {
                     let left =
                         RefCell::borrow(self.left.as_ref().unwrap()).resolve_conclusion(result)?;
-                    Ok(!left)
+                    Ok(left.not())
                 }
                 _ => Err("Unallowed operator in conclusion".to_string()),
             }?;

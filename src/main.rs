@@ -56,8 +56,10 @@ fn main() {
                     "{}{} {}",
                     "?".normal().on_purple(),
                     format!("{}", query).bright_cyan().on_purple(),
-                    if result {
+                    if result.is_true() {
                         format!("{}", "true".cyan())
+                    } else if result.is_ambiguous() {
+                        format!("{}", "ambiguous".purple())
                     } else {
                         format!("{}", "false".yellow())
                     }

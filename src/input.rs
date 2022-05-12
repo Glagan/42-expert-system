@@ -1,4 +1,4 @@
-use crate::node::{Fact, Node, Operator};
+use crate::node::{Fact, Node, Operator, Resolve};
 use colored::Colorize;
 use nom::{
     branch::alt,
@@ -102,6 +102,12 @@ fn queries(i: &str) -> IResult<&str, Vec<char>> {
     Ok((input, symbols))
 }
 
+impl Default for Input {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Input {
     pub fn new() -> Input {
         Input {
@@ -132,7 +138,7 @@ impl Input {
                 *symbol,
                 Rc::new(RefCell::new(Fact {
                     repr: *symbol,
-                    value: RefCell::new(false),
+                    value: RefCell::new(Resolve::False),
                     resolved: RefCell::new(false),
                     rules: vec![],
                 })),
@@ -416,7 +422,9 @@ impl Input {
                         if !self.facts.contains_key(query) {
                             self.warnings
                                 .push(format!("Query for missing fact {}", query));
-                            self.get_or_insert_fact(query).borrow_mut().set(false);
+                            self.get_or_insert_fact(query)
+                                .borrow_mut()
+                                .set(Resolve::False);
                         }
                     }
                     parsed_queries = true
@@ -478,12 +486,16 @@ impl Input {
                                 .push(format!("Duplicate initial fact for symbol {}", symbol));
                         } else if !self.initial_facts.contains(symbol) {
                             self.initial_facts.push(*symbol);
-                            self.get_or_insert_fact(symbol).borrow_mut().set(true);
+                            self.get_or_insert_fact(symbol)
+                                .borrow_mut()
+                                .set(Resolve::True);
                         }
                         if !self.facts.contains_key(symbol) {
                             self.warnings
                                 .push(format!("Unused Initial fact {}", symbol));
-                            self.get_or_insert_fact(symbol).borrow_mut().set(true);
+                            self.get_or_insert_fact(symbol)
+                                .borrow_mut()
+                                .set(Resolve::True);
                         }
                     }
                     parsed_initial_facts = true;
