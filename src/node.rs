@@ -239,20 +239,23 @@ impl Node {
                 print!("{}", repr);
             }
         } else if self.has_operator() {
+            if self.operator_eq(&Operator::Not) {
+                print!("!");
+            }
             if !self.operator_eq(&Operator::Implies) && !self.operator_eq(&Operator::IfAndOnlyIf) {
                 print!("(");
             }
             RefCell::borrow(self.left.as_ref().unwrap()).print_short();
-            print!(" ");
-            match self.operator.unwrap() {
-                Operator::And => print!("+"),
-                Operator::Or => print!("|"),
-                Operator::Xor => print!("^"),
-                Operator::Not => print!("!"),
-                Operator::Implies => print!("=>"),
-                Operator::IfAndOnlyIf => print!("<=>"),
-            };
             if self.has_right() {
+                print!(" ");
+                match self.operator.unwrap() {
+                    Operator::And => print!("+"),
+                    Operator::Or => print!("|"),
+                    Operator::Xor => print!("^"),
+                    Operator::Not => (),
+                    Operator::Implies => print!("=>"),
+                    Operator::IfAndOnlyIf => print!("<=>"),
+                };
                 print!(" ");
                 RefCell::borrow(self.right.as_ref().unwrap()).print_short();
             }

@@ -1,8 +1,11 @@
 # This example works
 
 (A|(A|(A|(A|(A|(A)|C)|A)|A)|A)|A)|A => B
+(A)+C => (((((((B)))))))
+!(!(!(!(!(!((A))))))) => B
+!(!(A+!(!C))) | (!(!(A+!(!C)))) + !(!(A+!(!C))) | (!(!(A+!(!C)))) => !(!(B))
 
-=A
+=AC
 ?B
 
-# B true if =A
+# B true if =AC with any rule

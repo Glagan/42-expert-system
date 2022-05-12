@@ -203,8 +203,12 @@ impl Input {
                         i + 1
                     ));
                 }
+                if RefCell::borrow(&current_symbol).operator_eq(&Operator::Not) {
+                    current_symbol = upper_symbols.pop().unwrap();
+                }
                 if RefCell::borrow(&current_symbol).has_left()
                     && !RefCell::borrow(&current_symbol).has_right()
+                    && !RefCell::borrow(&current_symbol).has_fact()
                     && RefCell::borrow(&current_symbol).has_operator()
                 {
                     return Err(format!(
@@ -252,6 +256,20 @@ impl Input {
                     ));
                 }
             } else if c == '+' || c == '|' || c == '^' {
+                // If there is already an Operator::Not, go up in symbols if it's complete
+                if RefCell::borrow(&current_symbol).operator_eq(&Operator::Not) {
+                    if RefCell::borrow(&current_symbol).has_fact()
+                        || RefCell::borrow(&current_symbol).has_left()
+                    {
+                        current_symbol = upper_symbols.pop().unwrap();
+                    } else {
+                        return Err(format!(
+                            "Closing Operator Not on empty symbol `{}` column {}",
+                            string,
+                            i + 1
+                        ));
+                    }
+                }
                 // Set the operator of the current symbol or create a new one
                 if RefCell::borrow(&current_symbol).has_operator() {
                     if RefCell::borrow(&current_symbol).has_left()

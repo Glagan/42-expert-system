@@ -614,3 +614,60 @@ fn negative_and_conclusion_2() {
     assert!(query_result.is_ok());
     assert!(query_result.unwrap().is_true());
 }
+
+#[test]
+fn nested_a_lot_1() {
+    let mut input = Input::new();
+    let result = input.parse_content(
+        "!(!(A+!(!C))) | (!(!(A+!(!C)))) + !(!(A+!(!C))) | (!(!(A+!(!C)))) => B\n=\n?B",
+    );
+    assert!(result.is_ok());
+    let mut path: Vec<String> = vec![];
+    let query_result = input
+        .facts
+        .get(input.queries.first().unwrap())
+        .unwrap()
+        .as_ref()
+        .borrow()
+        .resolve(&mut path);
+    assert!(query_result.is_ok());
+    assert!(query_result.unwrap().is_false());
+}
+
+#[test]
+fn nested_a_lot_2() {
+    let mut input = Input::new();
+    let result = input.parse_content(
+        "!(!(A+!(!C))) | (!(!(A+!(!C)))) + !(!(A+!(!C))) | (!(!(A+!(!C)))) => B\n=A\n?B",
+    );
+    assert!(result.is_ok());
+    let mut path: Vec<String> = vec![];
+    let query_result = input
+        .facts
+        .get(input.queries.first().unwrap())
+        .unwrap()
+        .as_ref()
+        .borrow()
+        .resolve(&mut path);
+    assert!(query_result.is_ok());
+    assert!(query_result.unwrap().is_false());
+}
+
+#[test]
+fn nested_a_lot_3() {
+    let mut input = Input::new();
+    let result = input.parse_content(
+        "!(!(A+!(!C))) | (!(!(A+!(!C)))) + !(!(A+!(!C))) | (!(!(A+!(!C)))) => B\n=AC\n?B",
+    );
+    assert!(result.is_ok());
+    let mut path: Vec<String> = vec![];
+    let query_result = input
+        .facts
+        .get(input.queries.first().unwrap())
+        .unwrap()
+        .as_ref()
+        .borrow()
+        .resolve(&mut path);
+    assert!(query_result.is_ok());
+    assert!(query_result.unwrap().is_true());
+}
