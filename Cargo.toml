@@ -9,4 +9,3 @@ edition = "2021"
 clap = { version = "3.1.14", features = ["cargo"] }
 colored = "2.0.0"
 nom = "7.1.1"
-text_io = "0.1.10"
