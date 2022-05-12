@@ -456,7 +456,7 @@ fn negative_conclusion_2() {
         .borrow()
         .resolve(&mut path);
     assert!(query_result.is_ok());
-    assert!(query_result.unwrap().is_true());
+    assert!(query_result.unwrap().is_false());
 }
 
 #[test]
@@ -612,5 +612,5 @@ fn negative_and_conclusion_2() {
         .borrow()
         .resolve(&mut path);
     assert!(query_result.is_ok());
-    assert!(query_result.unwrap().is_false());
+    assert!(query_result.unwrap().is_true());
 }

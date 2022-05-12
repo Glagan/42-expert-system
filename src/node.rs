@@ -59,6 +59,10 @@ impl Fact {
         *self.resolved.borrow_mut() = true;
     }
 
+    pub fn set_value(&self, value: Resolve) {
+        *self.value.borrow_mut() = value;
+    }
+
     pub fn resolve(&self, path: &mut Vec<String>) -> Result<Resolve, String> {
         if *self.resolved.borrow() {
             path.push(format!(
@@ -285,7 +289,15 @@ impl Node {
                 Operator::Implies => {
                     let result = RefCell::borrow(self.left.as_ref().unwrap()).resolve(path)?;
                     if result.is_true() {
-                        RefCell::borrow(self.right.as_ref().unwrap()).resolve_conclusion(result)
+                        let mut facts: Vec<Rc<RefCell<Fact>>> = vec![];
+                        let result = RefCell::borrow(self.right.as_ref().unwrap())
+                            .resolve_conclusion(result, &mut facts)?;
+                        if !result.is_ambiguous() {
+                            for fact in facts {
+                                RefCell::borrow(&fact).set(result);
+                            }
+                        }
+                        Ok(result)
                     } else {
                         Ok(result)
                     }
@@ -357,43 +369,53 @@ impl Node {
         Err("Empty Node".to_string())
     }
 
-    // TODO Collect used Facts and set them to True *or* False if the result is not ambiguous
-    pub fn resolve_conclusion(&self, result: Resolve) -> Result<Resolve, String> {
+    pub fn resolve_conclusion(
+        &self,
+        result: Resolve,
+        facts: &mut Vec<Rc<RefCell<Fact>>>,
+    ) -> Result<Resolve, String> {
         if self.fact.is_some() {
-            RefCell::borrow(self.fact.as_ref().unwrap()).set(result);
+            facts.push(Rc::clone(self.fact.as_ref().unwrap()));
             if self.operator_eq(&Operator::Not) {
+                RefCell::borrow(self.fact.as_ref().unwrap()).set_value(result.not());
                 return Ok(result.not());
             }
+            RefCell::borrow(self.fact.as_ref().unwrap()).set_value(result);
             return Ok(result);
         } else if let Some(op) = &self.operator {
             let result = match op {
                 Operator::And => {
-                    RefCell::borrow(self.left.as_ref().unwrap()).resolve_conclusion(result)?;
-                    RefCell::borrow(self.right.as_ref().unwrap()).resolve_conclusion(result)?;
+                    RefCell::borrow(self.left.as_ref().unwrap())
+                        .resolve_conclusion(result, facts)?;
+                    RefCell::borrow(self.right.as_ref().unwrap())
+                        .resolve_conclusion(result, facts)?;
                     Ok(result)
                 }
                 Operator::Or => {
-                    // TODO Check ambiguous
-                    RefCell::borrow(self.left.as_ref().unwrap()).resolve_conclusion(result)?;
-                    RefCell::borrow(self.right.as_ref().unwrap()).resolve_conclusion(result)?;
-                    Ok(result)
+                    RefCell::borrow(self.left.as_ref().unwrap())
+                        .resolve_conclusion(Resolve::Ambiguous, facts)?;
+                    RefCell::borrow(self.right.as_ref().unwrap())
+                        .resolve_conclusion(Resolve::Ambiguous, facts)?;
+                    Ok(Resolve::Ambiguous)
                 }
                 Operator::Xor => {
-                    // TODO Check ambiguous
-                    RefCell::borrow(self.left.as_ref().unwrap()).resolve_conclusion(result)?;
-                    RefCell::borrow(self.right.as_ref().unwrap()).resolve_conclusion(result)?;
-                    Ok(result)
+                    RefCell::borrow(self.left.as_ref().unwrap())
+                        .resolve_conclusion(Resolve::Ambiguous, facts)?;
+                    RefCell::borrow(self.right.as_ref().unwrap())
+                        .resolve_conclusion(Resolve::Ambiguous, facts)?;
+                    Ok(Resolve::Ambiguous)
                 }
                 Operator::Not => {
-                    let left =
-                        RefCell::borrow(self.left.as_ref().unwrap()).resolve_conclusion(result)?;
+                    let left = RefCell::borrow(self.left.as_ref().unwrap())
+                        .resolve_conclusion(result, facts)?;
                     Ok(left.not())
                 }
                 _ => Err("Unallowed operator in conclusion".to_string()),
             }?;
             return Ok(result);
         } else if self.has_left() {
-            let result = RefCell::borrow(self.left.as_ref().unwrap()).resolve_conclusion(result)?;
+            let result =
+                RefCell::borrow(self.left.as_ref().unwrap()).resolve_conclusion(result, facts)?;
             return Ok(result);
         }
         Err("Empty Node".to_string())

@@ -5,4 +5,4 @@ B + !C => !A
 =B
 ?A
 
-# A is always false
+# B true if =B else false
