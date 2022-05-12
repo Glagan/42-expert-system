@@ -172,7 +172,7 @@ impl Input {
                 opened_context += 1;
                 if !RefCell::borrow(&current_symbol).has_left() {
                     let new_symbol = Rc::new(RefCell::new(Node::new()));
-                    current_symbol.borrow_mut().left = Some(Rc::clone(&new_symbol));
+                    RefCell::borrow_mut(&current_symbol).left = Some(Rc::clone(&new_symbol));
                     upper_symbols.push(Rc::clone(&current_symbol));
                     current_symbol = new_symbol;
                 } else if !RefCell::borrow(&current_symbol).has_right() {
@@ -184,7 +184,7 @@ impl Input {
                         ));
                     }
                     let new_symbol = Rc::new(RefCell::new(Node::new()));
-                    current_symbol.borrow_mut().right = Some(Rc::clone(&new_symbol));
+                    RefCell::borrow_mut(&current_symbol).right = Some(Rc::clone(&new_symbol));
                     upper_symbols.push(Rc::clone(&current_symbol));
                     current_symbol = new_symbol;
                 } else {
@@ -229,7 +229,7 @@ impl Input {
                 // Open context on an available symbol side
                 if !RefCell::borrow(&current_symbol).has_left() {
                     let new_symbol = Rc::new(RefCell::new(Node::operator(Operator::Not)));
-                    current_symbol.borrow_mut().left = Some(Rc::clone(&new_symbol));
+                    RefCell::borrow_mut(&current_symbol).left = Some(Rc::clone(&new_symbol));
                     upper_symbols.push(Rc::clone(&current_symbol));
                     current_symbol = new_symbol;
                 } else if !RefCell::borrow(&current_symbol).has_right() {
@@ -241,7 +241,7 @@ impl Input {
                         ));
                     }
                     let new_symbol = Rc::new(RefCell::new(Node::operator(Operator::Not)));
-                    current_symbol.borrow_mut().right = Some(Rc::clone(&new_symbol));
+                    RefCell::borrow_mut(&current_symbol).right = Some(Rc::clone(&new_symbol));
                     upper_symbols.push(Rc::clone(&current_symbol));
                     current_symbol = new_symbol;
                 } else {
@@ -265,27 +265,31 @@ impl Input {
                         // -- and the new nested symbol is set as the current symbol
                         if new_operator < RefCell::borrow(&current_symbol).operator.unwrap() {
                             let new_symbol = Rc::new(RefCell::new(Node::new()));
-                            new_symbol.borrow_mut().left = Some(Rc::clone(
+                            RefCell::borrow_mut(&new_symbol).left = Some(Rc::clone(
                                 RefCell::borrow(&current_symbol).right.as_ref().unwrap(),
                             ));
-                            new_symbol.borrow_mut().operator = Some(new_operator);
-                            current_symbol.borrow_mut().right = Some(Rc::clone(&new_symbol));
+                            RefCell::borrow_mut(&new_symbol).operator = Some(new_operator);
+                            RefCell::borrow_mut(&current_symbol).right =
+                                Some(Rc::clone(&new_symbol));
                             upper_symbols.push(Rc::clone(&current_symbol));
                             current_symbol = new_symbol;
                         }
                         // -- Else a new symbol is created and the previous one is added on the left side of the new one
                         else {
                             let new_symbol = Rc::new(RefCell::new(Node::new()));
-                            new_symbol.borrow_mut().left = Some(Rc::clone(&current_symbol));
-                            new_symbol.borrow_mut().operator = Some(new_operator);
+                            RefCell::borrow_mut(&new_symbol).left =
+                                Some(Rc::clone(&current_symbol));
+                            RefCell::borrow_mut(&new_symbol).operator = Some(new_operator);
                             current_symbol = new_symbol;
                             // Update last upper symbol left or right which was for the current symbol
                             if !upper_symbols.is_empty() {
                                 let last = upper_symbols.last().unwrap();
                                 if RefCell::borrow(last).has_right() {
-                                    last.borrow_mut().right = Some(Rc::clone(&current_symbol));
+                                    RefCell::borrow_mut(&last).right =
+                                        Some(Rc::clone(&current_symbol));
                                 } else if RefCell::borrow(last).has_left() {
-                                    last.borrow_mut().left = Some(Rc::clone(&current_symbol));
+                                    RefCell::borrow_mut(&last).left =
+                                        Some(Rc::clone(&current_symbol));
                                 } else {
                                     return Err(format!("Opening a new nested symbol on a full operator with an empty context in block `{}` column {}", string, i + 1));
                                 }
@@ -305,8 +309,9 @@ impl Input {
                             let fact_ref = Rc::clone(symbol_ref.fact.as_ref().unwrap());
                             let fact = RefCell::borrow(&fact_ref);
                             drop(symbol_ref);
-                            current_symbol.borrow_mut().left = Some(self.fact_node(&fact.repr));
-                            current_symbol.borrow_mut().fact = None;
+                            RefCell::borrow_mut(&current_symbol).left =
+                                Some(self.fact_node(&fact.repr));
+                            RefCell::borrow_mut(&current_symbol).fact = None;
                         } else {
                             return Err(format!(
                                 "Adding operator to empty symbol in block `{}` column {}",
@@ -315,14 +320,14 @@ impl Input {
                             ));
                         }
                     }
-                    current_symbol.borrow_mut().operator = Node::match_operator(c);
+                    RefCell::borrow_mut(&current_symbol).operator = Node::match_operator(c);
                 }
             } else if !RefCell::borrow(&current_symbol).has_left() {
                 // If the current symbol has a Operator::Not
                 // -- set the value of the symbol
                 // Else create a symbol with a value on an opened side
                 if RefCell::borrow(&current_symbol).operator_eq(&Operator::Not) {
-                    current_symbol.borrow_mut().fact = Some(self.get_or_insert_fact(&c));
+                    RefCell::borrow_mut(&current_symbol).fact = Some(self.get_or_insert_fact(&c));
                     if !upper_symbols.is_empty() {
                         let last = upper_symbols.pop().unwrap();
                         current_symbol = Rc::clone(&last);
@@ -332,9 +337,9 @@ impl Input {
                     && !RefCell::borrow(&current_symbol).has_right()
                     && !RefCell::borrow(&current_symbol).has_operator()
                 {
-                    current_symbol.borrow_mut().fact = Some(self.get_or_insert_fact(&c));
+                    RefCell::borrow_mut(&current_symbol).fact = Some(self.get_or_insert_fact(&c));
                 } else {
-                    current_symbol.borrow_mut().left = Some(self.fact_node(&c));
+                    RefCell::borrow_mut(&current_symbol).left = Some(self.fact_node(&c));
                 }
             } else if !RefCell::borrow(&current_symbol).has_right() {
                 if !RefCell::borrow(&current_symbol).has_operator() {
@@ -344,7 +349,7 @@ impl Input {
                         i + 1
                     ));
                 }
-                current_symbol.borrow_mut().right = Some(self.fact_node(&c));
+                RefCell::borrow_mut(&current_symbol).right = Some(self.fact_node(&c));
             } else {
                 return Err(format!(
                     "Extraneous symbol with no operators or block in block `{}` column {}",
@@ -441,6 +446,9 @@ impl Input {
         }
         // Else add them to the Input
         let (_, initial_facts) = result.unwrap();
+        if !initial_facts.iter().all(char::is_ascii_uppercase) {
+            return Err("Initial facts can only be uppercase letters".to_string());
+        }
         for symbol in initial_facts.iter() {
             // Check if each initial facts are not duplicated
             if self.initial_facts.contains(symbol) {
@@ -448,16 +456,12 @@ impl Input {
                     .push(format!("Duplicate initial fact for symbol {}", symbol));
             } else if !self.initial_facts.contains(symbol) {
                 self.initial_facts.push(*symbol);
-                self.get_or_insert_fact(symbol)
-                    .borrow_mut()
-                    .set(Resolve::True);
+                RefCell::borrow_mut(&self.get_or_insert_fact(symbol)).set(Resolve::True);
             }
             if !self.facts.contains_key(symbol) {
                 self.warnings
                     .push(format!("Unused Initial fact {}", symbol));
-                self.get_or_insert_fact(symbol)
-                    .borrow_mut()
-                    .set(Resolve::True);
+                RefCell::borrow_mut(&self.get_or_insert_fact(symbol)).set(Resolve::True);
             }
         }
         Ok(())
@@ -475,6 +479,9 @@ impl Input {
             return Err(result.unwrap_err().to_string());
         }
         let (_, queries) = result.unwrap();
+        if !queries.iter().all(char::is_ascii_uppercase) {
+            return Err("Queries can only be uppercase letters".to_string());
+        }
         // Check if each queries are not duplicate and exist in rules or initial facts
         for query in queries.iter() {
             if self.queries.contains(query) {
@@ -486,9 +493,7 @@ impl Input {
             if !self.facts.contains_key(query) {
                 self.warnings
                     .push(format!("Query for missing fact {}", query));
-                self.get_or_insert_fact(query)
-                    .borrow_mut()
-                    .set(Resolve::False);
+                RefCell::borrow_mut(&self.get_or_insert_fact(query)).set(Resolve::False);
             }
         }
         Ok(())
@@ -552,12 +557,6 @@ impl Input {
         if self.queries.is_empty() {
             return Err("Queries can't be empty".to_string());
         }
-        if !self.queries.iter().all(char::is_ascii_uppercase) {
-            return Err("Queries can only be uppercase letters".to_string());
-        }
-        if !self.initial_facts.iter().all(char::is_ascii_uppercase) {
-            return Err("Initial facts can only be uppercase letters".to_string());
-        }
         Ok(())
     }
 
@@ -593,5 +592,17 @@ impl Input {
             print!("{}", query);
         }
         println!();
+    }
+
+    pub fn reset(&mut self) {
+        for (repr, fact) in self.facts.iter() {
+            let is_initial_fact = self.initial_facts.contains(repr);
+            *RefCell::borrow_mut(&RefCell::borrow(fact).value) = if is_initial_fact {
+                Resolve::True
+            } else {
+                Resolve::False
+            };
+            *RefCell::borrow_mut(&RefCell::borrow(fact).resolved) = is_initial_fact;
+        }
     }
 }

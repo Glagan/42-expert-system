@@ -1,7 +1,6 @@
 use clap::{arg, command};
 use colored::Colorize;
 use std::io::{self, Write};
-use text_io::read;
 
 pub mod input;
 use input::Input;
@@ -53,6 +52,7 @@ fn main() {
         input.show_initial_facts();
 
         // Create an inference engine for the Input and resolve all queries
+        let mut visualize = matches.is_present("visualize");
         let mut do_loop = true;
         while do_loop {
             for query in input.queries.clone().iter() {
@@ -65,7 +65,7 @@ fn main() {
                     .as_ref()
                     .borrow()
                     .resolve(&mut path);
-                if matches.is_present("visualize") {
+                if visualize {
                     path.iter()
                         .map(|path| println!("{}  {}", "?".purple().on_black(), path))
                         .for_each(drop);
@@ -97,11 +97,20 @@ fn main() {
             if matches.is_present("interactive") {
                 let mut search_command = true;
                 while search_command {
-                    interactive_line(&"[e]xec [r]ule [?]query [f]act [n]ext [h]elp [q]uit");
+                    interactive_line(
+                        &"[e]xec [r]ule [?]query [f]act [n]ext [v]isualize [h]elp [q]uit",
+                    );
                     interactive_input();
-                    let command: String = read!("{}");
+                    let mut command: String = String::new();
+                    let read_input = io::stdin().read_line(&mut command);
+                    command = command.trim().to_string();
+                    if read_input.is_err() {
+                        eprintln!("Error while reading input {}", read_input.unwrap_err());
+                        return;
+                    }
                     // Resolve all of the current queries
                     if command == "e" || command == "exec" {
+                        input.reset();
                         search_command = false;
                     }
                     // Show the current rules, initial facts and queries
@@ -114,45 +123,81 @@ fn main() {
                     else if command == "r" || command == "rule" {
                         interactive_line(&"Add a rule, example: `A => B`");
                         interactive_input();
-                        let rule: String = read!("{}");
-                        let result = input.parse_rule(&rule.trim());
-                        if result.is_err() {
-                            interactive_line(&result.unwrap_err().to_string());
+                        let mut rule: String = String::new();
+                        let read_input = io::stdin().read_line(&mut rule);
+                        if read_input.is_ok() {
+                            let result = input.parse_rule(&rule.trim());
+                            if result.is_err() {
+                                interactive_line(&format!(
+                                    "{}",
+                                    result.unwrap_err().to_string().red()
+                                ));
+                            } else {
+                                input.show_warnings();
+                                input.show_rules();
+                            }
                         } else {
-                            input.show_warnings();
-                            input.show_rules();
+                            eprintln!("Error while reading command {}", read_input.unwrap_err());
+                            return;
                         }
                     }
                     // Set *all* of the initial facts
                     else if command == "f" || command == "facts" {
                         interactive_line(&"Set all initial facts, example: `ABC`");
                         interactive_input();
-                        let facts: String = read!("{}");
-                        let result = input.reparse_initial_facts(&format!("={}", facts.trim()));
-                        if result.is_err() {
-                            interactive_line(&result.unwrap_err().to_string());
+                        let mut facts: String = String::new();
+                        let read_input = io::stdin().read_line(&mut facts);
+                        if read_input.is_ok() {
+                            let result = input.reparse_initial_facts(&format!("={}", facts.trim()));
+                            if result.is_err() {
+                                interactive_line(&format!(
+                                    "{}",
+                                    result.unwrap_err().to_string().red()
+                                ));
+                            } else {
+                                input.show_warnings();
+                                input.show_initial_facts();
+                            }
                         } else {
-                            input.show_warnings();
-                            input.show_initial_facts();
+                            eprintln!("Error while reading command {}", read_input.unwrap_err());
+                            return;
                         }
                     }
                     // Set *all* of the queries
                     else if command == "?" || command == "queries" {
                         interactive_line(&"Set all queries, example: `ABC`");
                         interactive_input();
-                        let queries: String = read!("{}\n");
-                        let result = input.reparse_queries(&format!("?{}", queries.trim()));
-                        if result.is_err() {
-                            interactive_line(&result.unwrap_err().to_string());
+                        let mut queries: String = String::new();
+                        let read_input = io::stdin().read_line(&mut queries);
+                        if read_input.is_ok() {
+                            let result = input.reparse_queries(&format!("?{}", queries.trim()));
+                            if result.is_err() {
+                                interactive_line(&format!(
+                                    "{}",
+                                    result.unwrap_err().to_string().red()
+                                ));
+                            } else {
+                                input.show_warnings();
+                                input.show_queries();
+                            }
                         } else {
-                            input.show_warnings();
-                            input.show_queries();
+                            eprintln!("Error while reading command {}", read_input.unwrap_err());
+                            return;
                         }
                     }
                     // Next file
                     else if command == "n" || command == "next" {
                         do_loop = false;
                         search_command = false;
+                    }
+                    // Toggle visualization
+                    else if command == "v" || command == "visualize" {
+                        visualize = !visualize;
+                        if visualize {
+                            interactive_line(&format!("visualization toggled {}", "on".cyan()));
+                        } else {
+                            interactive_line(&format!("visualization toggled {}", "off".yellow()));
+                        }
                     }
                     // Quit the program
                     else if command == "q" || command == "quit" || command == "exit" {
@@ -168,6 +213,7 @@ fn main() {
                         interactive_line(&"f, facts\tSet the initial facts");
                         interactive_line(&"?, queries\tSet the queries to resolve");
                         interactive_line(&"n, next\tGo to the next file");
+                        interactive_line(&"v, visualize\tToggle visualization");
                         interactive_line(&"h, help\tPrint this help");
                         interactive_line(&"q, quit\tQuit the program");
                     }

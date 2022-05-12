@@ -55,12 +55,12 @@ pub struct Fact {
 
 impl Fact {
     pub fn set(&self, value: Resolve) {
-        *self.value.borrow_mut() = value;
-        *self.resolved.borrow_mut() = true;
+        *RefCell::borrow_mut(&self.value) = value;
+        *RefCell::borrow_mut(&self.resolved) = true;
     }
 
     pub fn set_value(&self, value: Resolve) {
-        *self.value.borrow_mut() = value;
+        *RefCell::borrow_mut(&self.value) = value;
     }
 
     pub fn resolve(&self, path: &mut Vec<String>) -> Result<Resolve, String> {
@@ -78,12 +78,12 @@ impl Fact {
             ));
             return Ok(*self.value.borrow());
         }
-        *self.resolved.borrow_mut() = true;
+        *RefCell::borrow_mut(&self.resolved) = true;
         if !self.rules.is_empty() {
             for rule in self.rules.iter() {
                 let result = RefCell::borrow(rule).resolve(path)?;
                 if result.is_true() {
-                    *self.value.borrow_mut() = result;
+                    *RefCell::borrow_mut(&self.value) = result;
                     path.push(format!("{} is {}", self.repr, "true".cyan()));
                     return Ok(result);
                 }
@@ -274,14 +274,14 @@ impl Node {
         if *self.visited.borrow() {
             return Err(format!("Infinite rule {}", self));
         }
-        *self.visited.borrow_mut() = true;
+        *RefCell::borrow_mut(&self.visited) = true;
         if self.fact.is_some() {
             let result = RefCell::borrow(self.fact.as_ref().unwrap()).resolve(path)?;
             if self.operator_eq(&Operator::Not) {
-                *self.visited.borrow_mut() = false;
+                *RefCell::borrow_mut(&self.visited) = false;
                 return Ok(result.not());
             }
-            *self.visited.borrow_mut() = false;
+            *RefCell::borrow_mut(&self.visited) = false;
             return Ok(result);
         } else if let Some(op) = &self.operator {
             path.push(self.to_string());
@@ -358,14 +358,14 @@ impl Node {
                     Ok(left.not())
                 }
             };
-            *self.visited.borrow_mut() = false;
+            *RefCell::borrow_mut(&self.visited) = false;
             return result;
         } else if self.has_left() {
             let result = RefCell::borrow(self.left.as_ref().unwrap()).resolve(path)?;
-            *self.visited.borrow_mut() = false;
+            *RefCell::borrow_mut(&self.visited) = false;
             return Ok(result);
         }
-        *self.visited.borrow_mut() = false;
+        *RefCell::borrow_mut(&self.visited) = false;
         Err("Empty Node".to_string())
     }
 
