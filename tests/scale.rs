@@ -53,7 +53,7 @@ fn scale_1(initial_facts: &str) -> String {
 #[test]
 fn scale_1_1() {
     let mut input = Input::new();
-    let parse_result = input.parse_content(&scale_1(&"DEIJOP"));
+    let parse_result = input.parse_content(&scale_1("DEIJOP"));
     assert!(parse_result.is_ok());
     expect_true(&input, vec!['A', 'F', 'K', 'P']);
 }
@@ -61,7 +61,7 @@ fn scale_1_1() {
 #[test]
 fn scale_1_2() {
     let mut input = Input::new();
-    let parse_result = input.parse_content(&scale_1(&"DEIJP"));
+    let parse_result = input.parse_content(&scale_1("DEIJP"));
     assert!(parse_result.is_ok());
     expect_true(&input, vec!['A', 'F', 'P']);
     expect_false(&input, vec!['K']);
@@ -83,7 +83,7 @@ fn scale_2(initial_facts: &str) -> String {
 #[test]
 fn scale_2_1() {
     let mut input = Input::new();
-    let parse_result = input.parse_content(&scale_2(&""));
+    let parse_result = input.parse_content(&scale_2(""));
     assert!(parse_result.is_ok());
     expect_false(&input, vec!['A']);
 }
@@ -91,7 +91,7 @@ fn scale_2_1() {
 #[test]
 fn scale_2_2() {
     let mut input = Input::new();
-    let parse_result = input.parse_content(&scale_2(&"D"));
+    let parse_result = input.parse_content(&scale_2("D"));
     assert!(parse_result.is_ok());
     expect_true(&input, vec!['A']);
 }
@@ -99,7 +99,7 @@ fn scale_2_2() {
 #[test]
 fn scale_2_3() {
     let mut input = Input::new();
-    let parse_result = input.parse_content(&scale_2(&"E"));
+    let parse_result = input.parse_content(&scale_2("E"));
     assert!(parse_result.is_ok());
     expect_true(&input, vec!['A']);
 }
@@ -107,7 +107,7 @@ fn scale_2_3() {
 #[test]
 fn scale_2_4() {
     let mut input = Input::new();
-    let parse_result = input.parse_content(&scale_2(&"DE"));
+    let parse_result = input.parse_content(&scale_2("DE"));
     assert!(parse_result.is_ok());
     expect_true(&input, vec!['A']);
 }
@@ -128,7 +128,7 @@ fn scale_3(initial_facts: &str) -> String {
 #[test]
 fn scale_3_1() {
     let mut input = Input::new();
-    let parse_result = input.parse_content(&scale_3(&""));
+    let parse_result = input.parse_content(&scale_3(""));
     assert!(parse_result.is_ok());
     expect_false(&input, vec!['A']);
 }
@@ -136,7 +136,7 @@ fn scale_3_1() {
 #[test]
 fn scale_3_2() {
     let mut input = Input::new();
-    let parse_result = input.parse_content(&scale_3(&"D"));
+    let parse_result = input.parse_content(&scale_3("D"));
     assert!(parse_result.is_ok());
     expect_true(&input, vec!['A']);
 }
@@ -144,7 +144,7 @@ fn scale_3_2() {
 #[test]
 fn scale_3_3() {
     let mut input = Input::new();
-    let parse_result = input.parse_content(&scale_3(&"E"));
+    let parse_result = input.parse_content(&scale_3("E"));
     assert!(parse_result.is_ok());
     expect_true(&input, vec!['A']);
 }
@@ -152,7 +152,7 @@ fn scale_3_3() {
 #[test]
 fn scale_3_4() {
     let mut input = Input::new();
-    let parse_result = input.parse_content(&scale_3(&"DE"));
+    let parse_result = input.parse_content(&scale_3("DE"));
     assert!(parse_result.is_ok());
     expect_false(&input, vec!['A']);
 }
@@ -171,7 +171,7 @@ fn scale_4(initial_facts: &str) -> String {
 #[test]
 fn scale_4_1() {
     let mut input = Input::new();
-    let parse_result = input.parse_content(&scale_4(&""));
+    let parse_result = input.parse_content(&scale_4(""));
     assert!(parse_result.is_ok());
     expect_false(&input, vec!['A']);
 }
@@ -179,7 +179,7 @@ fn scale_4_1() {
 #[test]
 fn scale_4_2() {
     let mut input = Input::new();
-    let parse_result = input.parse_content(&scale_4(&"B"));
+    let parse_result = input.parse_content(&scale_4("B"));
     assert!(parse_result.is_ok());
     expect_true(&input, vec!['A']);
 }
@@ -187,7 +187,7 @@ fn scale_4_2() {
 #[test]
 fn scale_4_3() {
     let mut input = Input::new();
-    let parse_result = input.parse_content(&scale_4(&"C"));
+    let parse_result = input.parse_content(&scale_4("C"));
     assert!(parse_result.is_ok());
     expect_false(&input, vec!['A']);
 }
@@ -195,7 +195,7 @@ fn scale_4_3() {
 #[test]
 fn scale_4_4() {
     let mut input = Input::new();
-    let parse_result = input.parse_content(&scale_4(&"BC"));
+    let parse_result = input.parse_content(&scale_4("BC"));
     assert!(parse_result.is_ok());
     expect_false(&input, vec!['A']);
 }
@@ -215,7 +215,7 @@ fn scale_5(initial_facts: &str) -> String {
 #[test]
 fn scale_5_1() {
     let mut input = Input::new();
-    let parse_result = input.parse_content(&scale_5(&""));
+    let parse_result = input.parse_content(&scale_5(""));
     assert!(parse_result.is_ok());
     expect_false(&input, vec!['A']);
 }
@@ -223,7 +223,7 @@ fn scale_5_1() {
 #[test]
 fn scale_5_2() {
     let mut input = Input::new();
-    let parse_result = input.parse_content(&scale_5(&"B"));
+    let parse_result = input.parse_content(&scale_5("B"));
     assert!(parse_result.is_ok());
     expect_true(&input, vec!['A']);
 }
@@ -231,7 +231,7 @@ fn scale_5_2() {
 #[test]
 fn scale_5_3() {
     let mut input = Input::new();
-    let parse_result = input.parse_content(&scale_5(&"C"));
+    let parse_result = input.parse_content(&scale_5("C"));
     assert!(parse_result.is_ok());
     expect_true(&input, vec!['A']);
 }
@@ -239,7 +239,7 @@ fn scale_5_3() {
 #[test]
 fn scale_5_4() {
     let mut input = Input::new();
-    let parse_result = input.parse_content(&scale_5(&"BC"));
+    let parse_result = input.parse_content(&scale_5("BC"));
     assert!(parse_result.is_ok());
     expect_true(&input, vec!['A']);
 }
@@ -259,7 +259,7 @@ fn scale_6(initial_facts: &str) -> String {
 #[test]
 fn scale_6_1() {
     let mut input = Input::new();
-    let parse_result = input.parse_content(&scale_6(&""));
+    let parse_result = input.parse_content(&scale_6(""));
     assert!(parse_result.is_ok());
     expect_false(&input, vec!['E']);
 }
@@ -267,7 +267,7 @@ fn scale_6_1() {
 #[test]
 fn scale_6_2() {
     let mut input = Input::new();
-    let parse_result = input.parse_content(&scale_6(&"A"));
+    let parse_result = input.parse_content(&scale_6("A"));
     assert!(parse_result.is_ok());
     expect_true(&input, vec!['E']);
 }
@@ -275,7 +275,7 @@ fn scale_6_2() {
 #[test]
 fn scale_6_3() {
     let mut input = Input::new();
-    let parse_result = input.parse_content(&scale_6(&"B"));
+    let parse_result = input.parse_content(&scale_6("B"));
     assert!(parse_result.is_ok());
     expect_false(&input, vec!['E']);
 }
@@ -283,7 +283,7 @@ fn scale_6_3() {
 #[test]
 fn scale_6_4() {
     let mut input = Input::new();
-    let parse_result = input.parse_content(&scale_6(&"C"));
+    let parse_result = input.parse_content(&scale_6("C"));
     assert!(parse_result.is_ok());
     expect_false(&input, vec!['E']);
 }
@@ -291,7 +291,7 @@ fn scale_6_4() {
 #[test]
 fn scale_6_5() {
     let mut input = Input::new();
-    let parse_result = input.parse_content(&scale_6(&"AC"));
+    let parse_result = input.parse_content(&scale_6("AC"));
     assert!(parse_result.is_ok());
     expect_true(&input, vec!['E']);
 }
@@ -299,7 +299,7 @@ fn scale_6_5() {
 #[test]
 fn scale_6_6() {
     let mut input = Input::new();
-    let parse_result = input.parse_content(&scale_6(&"BC"));
+    let parse_result = input.parse_content(&scale_6("BC"));
     assert!(parse_result.is_ok());
     expect_true(&input, vec!['E']);
 }
@@ -307,7 +307,7 @@ fn scale_6_6() {
 #[test]
 fn scale_6_7() {
     let mut input = Input::new();
-    let parse_result = input.parse_content(&scale_6(&"F"));
+    let parse_result = input.parse_content(&scale_6("F"));
     assert!(parse_result.is_ok());
     expect_false(&input, vec!['E']);
 }
@@ -315,7 +315,7 @@ fn scale_6_7() {
 #[test]
 fn scale_6_8() {
     let mut input = Input::new();
-    let parse_result = input.parse_content(&scale_6(&"G"));
+    let parse_result = input.parse_content(&scale_6("G"));
     assert!(parse_result.is_ok());
     expect_false(&input, vec!['E']);
 }
@@ -323,7 +323,7 @@ fn scale_6_8() {
 #[test]
 fn scale_6_9() {
     let mut input = Input::new();
-    let parse_result = input.parse_content(&scale_6(&"H"));
+    let parse_result = input.parse_content(&scale_6("H"));
     assert!(parse_result.is_ok());
     expect_false(&input, vec!['E']);
 }
@@ -331,7 +331,7 @@ fn scale_6_9() {
 #[test]
 fn scale_6_10() {
     let mut input = Input::new();
-    let parse_result = input.parse_content(&scale_6(&"FH"));
+    let parse_result = input.parse_content(&scale_6("FH"));
     assert!(parse_result.is_ok());
     expect_true(&input, vec!['E']);
 }
@@ -339,7 +339,7 @@ fn scale_6_10() {
 #[test]
 fn scale_6_11() {
     let mut input = Input::new();
-    let parse_result = input.parse_content(&scale_6(&"GH"));
+    let parse_result = input.parse_content(&scale_6("GH"));
     assert!(parse_result.is_ok());
     expect_true(&input, vec!['E']);
 }

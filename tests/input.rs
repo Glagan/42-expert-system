@@ -160,7 +160,7 @@ fn reparse_initial_facts_1() {
     let mut input = Input::new();
     let result = input.parse_content("A => B\n=\n?B");
     assert!(result.is_ok());
-    let result = input.reparse_initial_facts(&"=ABC");
+    let result = input.reparse_initial_facts("=ABC");
     assert!(result.is_ok());
     assert_eq!(input.initial_facts, vec!['A', 'B', 'C']);
 }
@@ -170,7 +170,7 @@ fn reparse_initial_facts_2() {
     let mut input = Input::new();
     let result = input.parse_content("A => B\n=\n?B");
     assert!(result.is_ok());
-    let result = input.reparse_initial_facts(&"ABC");
+    let result = input.reparse_initial_facts("ABC");
     assert!(result.is_err());
 }
 
@@ -179,7 +179,7 @@ fn reparse_initial_facts_3() {
     let mut input = Input::new();
     let result = input.parse_content("A => B\n=\n?B");
     assert!(result.is_ok());
-    let result = input.reparse_initial_facts(&"abc");
+    let result = input.reparse_initial_facts("abc");
     assert!(result.is_err());
 }
 
@@ -188,7 +188,7 @@ fn reparse_queries_1() {
     let mut input = Input::new();
     let result = input.parse_content("A => B\n=\n?B");
     assert!(result.is_ok());
-    let result = input.reparse_queries(&"?AB");
+    let result = input.reparse_queries("?AB");
     assert!(result.is_ok());
     assert_eq!(input.queries, vec!['A', 'B']);
 }
@@ -198,7 +198,7 @@ fn reparse_queries_2() {
     let mut input = Input::new();
     let result = input.parse_content("A => B\n=\n?B");
     assert!(result.is_ok());
-    let result = input.reparse_queries(&"?");
+    let result = input.reparse_queries("?");
     assert!(result.is_err());
 }
 
@@ -207,7 +207,7 @@ fn reparse_queries_3() {
     let mut input = Input::new();
     let result = input.parse_content("A => B\n=\n?B");
     assert!(result.is_ok());
-    let result = input.reparse_queries(&"B");
+    let result = input.reparse_queries("B");
     assert!(result.is_err());
 }
 
@@ -216,7 +216,7 @@ fn reparse_queries_4() {
     let mut input = Input::new();
     let result = input.parse_content("A => B\n=\n?B");
     assert!(result.is_ok());
-    let result = input.reparse_queries(&"b");
+    let result = input.reparse_queries("b");
     assert!(result.is_err());
 }
 

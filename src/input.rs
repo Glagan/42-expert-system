@@ -303,10 +303,10 @@ impl Input {
                             if !upper_symbols.is_empty() {
                                 let last = upper_symbols.last().unwrap();
                                 if RefCell::borrow(last).has_right() {
-                                    RefCell::borrow_mut(&last).right =
+                                    RefCell::borrow_mut(last).right =
                                         Some(Rc::clone(&current_symbol));
                                 } else if RefCell::borrow(last).has_left() {
-                                    RefCell::borrow_mut(&last).left =
+                                    RefCell::borrow_mut(last).left =
                                         Some(Rc::clone(&current_symbol));
                                 } else {
                                     return Err(format!("Opening a new nested symbol on a full operator with an empty context in block `{}` column {}", string, i + 1));
@@ -415,8 +415,8 @@ impl Input {
 
     pub fn parse_rule(&mut self, line: &str) -> Result<(), String> {
         let result = rule(line);
-        if result.is_err() {
-            return Err(result.unwrap_err().to_string());
+        if let Err(result) = result {
+            return Err(result.to_string());
         }
         let (_, (left, op, right)) = result.unwrap();
         let (left, right) = prepare_rule(left, right)?;
@@ -459,8 +459,8 @@ impl Input {
     pub fn parse_initial_facts(&mut self, line: &str) -> Result<(), String> {
         let result = initial_facts(line);
         // If it's not the initial facts it's just an error
-        if result.is_err() {
-            return Err(result.unwrap_err().to_string());
+        if let Err(result) = result {
+            return Err(result.to_string());
         }
         // Else add them to the Input
         let (_, initial_facts) = result.unwrap();
@@ -493,8 +493,8 @@ impl Input {
 
     pub fn parse_queries(&mut self, line: &str) -> Result<(), String> {
         let result = queries(line);
-        if result.is_err() {
-            return Err(result.unwrap_err().to_string());
+        if let Err(result) = result {
+            return Err(result.to_string());
         }
         let (_, queries) = result.unwrap();
         if !queries.iter().all(char::is_ascii_uppercase) {
@@ -537,8 +537,7 @@ impl Input {
             // Parse queries
             if parsed_initial_facts {
                 let result = self.parse_queries(line);
-                if result.is_err() {
-                    let error = result.unwrap_err();
+                if let Err(error) = result {
                     return Err(format!("{}\nLine {} `{}`", error, line_number, line));
                 }
                 parsed_queries = true
@@ -547,8 +546,7 @@ impl Input {
             else {
                 let result = self.parse_rule(line);
                 // Parse initial facts if the rule parser doesn't match
-                if result.is_err() {
-                    let original_error = result.unwrap_err();
+                if let Err(original_error) = result {
                     let result = self.parse_initial_facts(line);
                     // If it's not the initial facts it's just an error
                     if result.is_err() {

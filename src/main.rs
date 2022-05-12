@@ -98,7 +98,7 @@ fn main() {
                 let mut search_command = true;
                 while search_command {
                     interactive_line(
-                        &"[e]xec [r]ule [?]query [f]act [n]ext [v]isualize [h]elp [q]uit",
+                        "[e]xec [r]ule [?]query [f]act [n]ext [v]isualize [h]elp [q]uit",
                     );
                     interactive_input();
                     let mut command: String = String::new();
@@ -121,12 +121,12 @@ fn main() {
                     }
                     // Add a rule
                     else if command == "r" || command == "rule" {
-                        interactive_line(&"Add a rule, example: `A => B`");
+                        interactive_line("Add a rule, example: `A => B`");
                         interactive_input();
                         let mut rule: String = String::new();
                         let read_input = io::stdin().read_line(&mut rule);
                         if read_input.is_ok() {
-                            let result = input.parse_rule(&rule.trim());
+                            let result = input.parse_rule(rule.trim());
                             if result.is_err() {
                                 interactive_line(&format!(
                                     "{}",
@@ -143,7 +143,7 @@ fn main() {
                     }
                     // Set *all* of the initial facts
                     else if command == "f" || command == "facts" {
-                        interactive_line(&"Set all initial facts, example: `ABC`");
+                        interactive_line("Set all initial facts, example: `ABC`");
                         interactive_input();
                         let mut facts: String = String::new();
                         let read_input = io::stdin().read_line(&mut facts);
@@ -165,7 +165,7 @@ fn main() {
                     }
                     // Set *all* of the queries
                     else if command == "?" || command == "queries" {
-                        interactive_line(&"Set all queries, example: `ABC`");
+                        interactive_line("Set all queries, example: `ABC`");
                         interactive_input();
                         let mut queries: String = String::new();
                         let read_input = io::stdin().read_line(&mut queries);
@@ -205,17 +205,17 @@ fn main() {
                     }
                     // Print the help, it's hard
                     else if command == "h" || command == "help" {
-                        interactive_line(&"e, exec\tResolve the current queries");
+                        interactive_line("e, exec\tResolve the current queries");
                         interactive_line(
-                            &"s, show\tShow the current rules, initial facts and queries",
+                            "s, show\tShow the current rules, initial facts and queries",
                         );
-                        interactive_line(&"r, rule\tAdd a rule");
-                        interactive_line(&"f, facts\tSet the initial facts");
-                        interactive_line(&"?, queries\tSet the queries to resolve");
-                        interactive_line(&"n, next\tGo to the next file");
-                        interactive_line(&"v, visualize\tToggle visualization");
-                        interactive_line(&"h, help\tPrint this help");
-                        interactive_line(&"q, quit\tQuit the program");
+                        interactive_line("r, rule\tAdd a rule");
+                        interactive_line("f, facts\tSet the initial facts");
+                        interactive_line("?, queries\tSet the queries to resolve");
+                        interactive_line("n, next\tGo to the next file");
+                        interactive_line("v, visualize\tToggle visualization");
+                        interactive_line("h, help\tPrint this help");
+                        interactive_line("q, quit\tQuit the program");
                     }
                     if command.is_empty() {
                         println!();
