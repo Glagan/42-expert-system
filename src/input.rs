@@ -390,6 +390,110 @@ impl Input {
         Ok(current_symbol)
     }
 
+    pub fn parse_rule(&mut self, line: &str) -> Result<(), String> {
+        let result = rule(line);
+        if result.is_err() {
+            return Err(result.unwrap_err().to_string());
+        }
+        let (_, (left, op, right)) = result.unwrap();
+        let (left, right) = prepare_rule(left, right)?;
+        let rule = Rc::new(RefCell::new(Node {
+            visited: RefCell::new(false),
+            fact: None,
+            left: Some(self.parse_rule_block(&left)?),
+            right: Some(self.parse_rule_block(&right)?),
+            operator: if op == "=>" {
+                Some(Operator::Implies)
+            } else {
+                Some(Operator::IfAndOnlyIf)
+            },
+        }));
+        let rule_ref = RefCell::borrow(&rule);
+        if rule_ref.operator_eq(&Operator::IfAndOnlyIf) {
+            for fact in RefCell::borrow(rule_ref.left.as_ref().unwrap())
+                .all_facts()
+                .iter()
+            {
+                RefCell::borrow_mut(fact).rules.push(Rc::clone(&rule));
+            }
+        }
+        for fact in RefCell::borrow(rule_ref.right.as_ref().unwrap())
+            .all_facts()
+            .iter()
+        {
+            RefCell::borrow_mut(fact).rules.push(Rc::clone(&rule));
+        }
+        self.rules.push(Rc::clone(&rule));
+        Ok(())
+    }
+
+    pub fn reparse_initial_facts(&mut self, line: &str) -> Result<(), String> {
+        self.initial_facts = vec![];
+        self.warnings = vec![];
+        self.parse_initial_facts(line)
+    }
+
+    pub fn parse_initial_facts(&mut self, line: &str) -> Result<(), String> {
+        let result = initial_facts(line);
+        // If it's not the initial facts it's just an error
+        if result.is_err() {
+            return Err(result.unwrap_err().to_string());
+        }
+        // Else add them to the Input
+        let (_, initial_facts) = result.unwrap();
+        for symbol in initial_facts.iter() {
+            // Check if each initial facts are not duplicated
+            if self.initial_facts.contains(symbol) {
+                self.warnings
+                    .push(format!("Duplicate initial fact for symbol {}", symbol));
+            } else if !self.initial_facts.contains(symbol) {
+                self.initial_facts.push(*symbol);
+                self.get_or_insert_fact(symbol)
+                    .borrow_mut()
+                    .set(Resolve::True);
+            }
+            if !self.facts.contains_key(symbol) {
+                self.warnings
+                    .push(format!("Unused Initial fact {}", symbol));
+                self.get_or_insert_fact(symbol)
+                    .borrow_mut()
+                    .set(Resolve::True);
+            }
+        }
+        Ok(())
+    }
+
+    pub fn reparse_queries(&mut self, line: &str) -> Result<(), String> {
+        self.queries = vec![];
+        self.warnings = vec![];
+        self.parse_queries(line)
+    }
+
+    pub fn parse_queries(&mut self, line: &str) -> Result<(), String> {
+        let result = queries(line);
+        if result.is_err() {
+            return Err(result.unwrap_err().to_string());
+        }
+        let (_, queries) = result.unwrap();
+        // Check if each queries are not duplicate and exist in rules or initial facts
+        for query in queries.iter() {
+            if self.queries.contains(query) {
+                self.warnings
+                    .push(format!("Duplicate query for fact {}", query));
+            } else {
+                self.queries.push(*query);
+            }
+            if !self.facts.contains_key(query) {
+                self.warnings
+                    .push(format!("Query for missing fact {}", query));
+                self.get_or_insert_fact(query)
+                    .borrow_mut()
+                    .set(Resolve::False);
+            }
+        }
+        Ok(())
+    }
+
     pub fn parse_content(&mut self, content: &str) -> Result<(), String> {
         let mut parsed_initial_facts = false;
         let mut parsed_queries = false;
@@ -409,94 +513,26 @@ impl Input {
 
             // Parse queries
             if parsed_initial_facts {
-                let result = queries(line);
-                if let Ok((_, queries)) = result {
-                    // Check if each queries are not duplicate and exist in rules or initial facts
-                    for query in queries.iter() {
-                        if self.queries.contains(query) {
-                            self.warnings
-                                .push(format!("Duplicate query for fact {}", query));
-                        } else {
-                            self.queries.push(*query);
-                        }
-                        if !self.facts.contains_key(query) {
-                            self.warnings
-                                .push(format!("Query for missing fact {}", query));
-                            self.get_or_insert_fact(query)
-                                .borrow_mut()
-                                .set(Resolve::False);
-                        }
-                    }
-                    parsed_queries = true
-                } else {
+                let result = self.parse_queries(line);
+                if result.is_err() {
                     let error = result.unwrap_err();
                     return Err(format!("{}\nLine {} `{}`", error, line_number, line));
                 }
+                parsed_queries = true
             }
             // Parse rule (and initial facts on error to switch context)
             else {
-                let result = rule(line);
-                if let Ok((_, (left, op, right))) = result {
-                    let (left, right) = prepare_rule(left, right)?;
-                    let rule = Rc::new(RefCell::new(Node {
-                        visited: RefCell::new(false),
-                        fact: None,
-                        left: Some(self.parse_rule_block(&left)?),
-                        right: Some(self.parse_rule_block(&right)?),
-                        operator: if op == "=>" {
-                            Some(Operator::Implies)
-                        } else {
-                            Some(Operator::IfAndOnlyIf)
-                        },
-                    }));
-                    let rule_ref = RefCell::borrow(&rule);
-                    if rule_ref.operator_eq(&Operator::IfAndOnlyIf) {
-                        for fact in RefCell::borrow(rule_ref.left.as_ref().unwrap())
-                            .all_facts()
-                            .iter()
-                        {
-                            RefCell::borrow_mut(fact).rules.push(Rc::clone(&rule));
-                        }
-                    }
-                    for fact in RefCell::borrow(rule_ref.right.as_ref().unwrap())
-                        .all_facts()
-                        .iter()
-                    {
-                        RefCell::borrow_mut(fact).rules.push(Rc::clone(&rule));
-                    }
-                    self.rules.push(Rc::clone(&rule));
-                }
+                let result = self.parse_rule(line);
                 // Parse initial facts if the rule parser doesn't match
-                else {
+                if result.is_err() {
                     let original_error = result.unwrap_err();
-                    let result = initial_facts(line);
+                    let result = self.parse_initial_facts(line);
                     // If it's not the initial facts it's just an error
                     if result.is_err() {
                         return Err(format!(
                             "{}\nLine {} `{}`",
                             original_error, line_number, line
                         ));
-                    }
-                    // Else add them to the Input
-                    let (_, initial_facts) = result.unwrap();
-                    for symbol in initial_facts.iter() {
-                        // Check if each initial facts are not duplicated
-                        if self.initial_facts.contains(symbol) {
-                            self.warnings
-                                .push(format!("Duplicate initial fact for symbol {}", symbol));
-                        } else if !self.initial_facts.contains(symbol) {
-                            self.initial_facts.push(*symbol);
-                            self.get_or_insert_fact(symbol)
-                                .borrow_mut()
-                                .set(Resolve::True);
-                        }
-                        if !self.facts.contains_key(symbol) {
-                            self.warnings
-                                .push(format!("Unused Initial fact {}", symbol));
-                            self.get_or_insert_fact(symbol)
-                                .borrow_mut()
-                                .set(Resolve::True);
-                        }
                     }
                     parsed_initial_facts = true;
                 }
@@ -547,6 +583,14 @@ impl Input {
             }
         } else {
             print!("No initial facts");
+        }
+        println!();
+    }
+
+    pub fn show_queries(&self) {
+        print!("{}  ", "?".normal().on_purple());
+        for query in self.queries.iter() {
+            print!("{}", query);
         }
         println!();
     }
