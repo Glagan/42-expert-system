@@ -456,7 +456,7 @@ fn negative_conclusion_2() {
         .borrow()
         .resolve(&mut path);
     assert!(query_result.is_ok());
-    assert!(query_result.unwrap().is_false());
+    assert!(query_result.unwrap().is_true());
 }
 
 #[test]
@@ -664,6 +664,110 @@ fn nested_a_lot_3() {
     let query_result = input
         .facts
         .get(input.queries.first().unwrap())
+        .unwrap()
+        .as_ref()
+        .borrow()
+        .resolve(&mut path);
+    assert!(query_result.is_ok());
+    assert!(query_result.unwrap().is_true());
+}
+
+#[test]
+fn or_conclusion_1() {
+    let mut input = Input::new();
+    let result = input.parse_content("A => C | D\n=\n?CD");
+    assert!(result.is_ok());
+    let mut path: Vec<String> = vec![];
+    let query_result = input
+        .facts
+        .get(input.queries.first().unwrap())
+        .unwrap()
+        .as_ref()
+        .borrow()
+        .resolve(&mut path);
+    assert!(query_result.is_ok());
+    assert!(query_result.unwrap().is_false());
+    let query_result = input
+        .facts
+        .get(input.queries.last().unwrap())
+        .unwrap()
+        .as_ref()
+        .borrow()
+        .resolve(&mut path);
+    assert!(query_result.is_ok());
+    assert!(query_result.unwrap().is_false());
+}
+
+#[test]
+fn or_conclusion_2() {
+    let mut input = Input::new();
+    let result = input.parse_content("A => C | D\n=A\n?CD");
+    assert!(result.is_ok());
+    let mut path: Vec<String> = vec![];
+    let query_result = input
+        .facts
+        .get(input.queries.first().unwrap())
+        .unwrap()
+        .as_ref()
+        .borrow()
+        .resolve(&mut path);
+    assert!(query_result.is_ok());
+    assert!(query_result.unwrap().is_ambiguous());
+    let query_result = input
+        .facts
+        .get(input.queries.last().unwrap())
+        .unwrap()
+        .as_ref()
+        .borrow()
+        .resolve(&mut path);
+    assert!(query_result.is_ok());
+    assert!(query_result.unwrap().is_ambiguous());
+}
+
+#[test]
+fn resolved_or_conclusion_1() {
+    let mut input = Input::new();
+    let result = input.parse_content("A => C | D\nA => C\nC => D\n=\n?CD");
+    assert!(result.is_ok());
+    let mut path: Vec<String> = vec![];
+    let query_result = input
+        .facts
+        .get(input.queries.first().unwrap())
+        .unwrap()
+        .as_ref()
+        .borrow()
+        .resolve(&mut path);
+    assert!(query_result.is_ok());
+    assert!(query_result.unwrap().is_false());
+    let query_result = input
+        .facts
+        .get(input.queries.last().unwrap())
+        .unwrap()
+        .as_ref()
+        .borrow()
+        .resolve(&mut path);
+    assert!(query_result.is_ok());
+    assert!(query_result.unwrap().is_false());
+}
+
+#[test]
+fn resolved_or_conclusion_2() {
+    let mut input = Input::new();
+    let result = input.parse_content("A => C | D\nA => C\nC => D\n=A\n?CD");
+    assert!(result.is_ok());
+    let mut path: Vec<String> = vec![];
+    let query_result = input
+        .facts
+        .get(input.queries.first().unwrap())
+        .unwrap()
+        .as_ref()
+        .borrow()
+        .resolve(&mut path);
+    assert!(query_result.is_ok());
+    assert!(query_result.unwrap().is_true());
+    let query_result = input
+        .facts
+        .get(input.queries.last().unwrap())
         .unwrap()
         .as_ref()
         .borrow()

@@ -78,7 +78,6 @@ impl Fact {
             ));
             return Ok(*self.value.borrow());
         }
-        *RefCell::borrow_mut(&self.resolved) = true;
         if !self.rules.is_empty() {
             for rule in self.rules.iter() {
                 let result = RefCell::borrow(rule).resolve(path)?;
@@ -89,7 +88,17 @@ impl Fact {
                 }
             }
         }
-        path.push(format!("{} is {}", self.repr, "false".yellow()));
+        path.push(format!(
+            "{} is {}",
+            self.repr,
+            if *self.value.borrow() == Resolve::True {
+                "true".cyan()
+            } else if *self.value.borrow() == Resolve::Ambiguous {
+                "ambiguous".purple()
+            } else {
+                "false".yellow()
+            }
+        ));
         Ok(*self.value.borrow())
     }
 }
@@ -295,9 +304,11 @@ impl Node {
                         let mut facts: Vec<Rc<RefCell<Fact>>> = vec![];
                         let result = RefCell::borrow(self.right.as_ref().unwrap())
                             .resolve_conclusion(result, &mut facts)?;
-                        if !result.is_ambiguous() {
-                            for fact in facts {
+                        for fact in facts {
+                            if result.is_true() {
                                 RefCell::borrow(&fact).set(result);
+                            } else {
+                                RefCell::borrow(&fact).set_value(result);
                             }
                         }
                         Ok(result)
@@ -308,11 +319,33 @@ impl Node {
                 Operator::IfAndOnlyIf => {
                     let left = RefCell::borrow(self.left.as_ref().unwrap()).resolve(path)?;
                     let right = RefCell::borrow(self.right.as_ref().unwrap()).resolve(path)?;
-                    // TODO Resolve conclusion on both sides ? Always set to true if true
-                    // if left && right {
-                    //     RefCell::borrow(self.right.as_ref().unwrap())
-                    //         .resolve_conclusion(result,  visited)
-                    // }
+                    // Resolve right
+                    if left.is_true() {
+                        let mut facts: Vec<Rc<RefCell<Fact>>> = vec![];
+                        let right_result = RefCell::borrow(self.right.as_ref().unwrap())
+                            .resolve_conclusion(left, &mut facts)?;
+                        for fact in facts {
+                            if right_result.is_true() {
+                                RefCell::borrow(&fact).set(right_result);
+                            } else {
+                                RefCell::borrow(&fact).set_value(right_result);
+                            }
+                        }
+                    }
+                    // Resolve left
+                    if right.is_true() {
+                        let mut facts: Vec<Rc<RefCell<Fact>>> = vec![];
+                        let left_result = RefCell::borrow(self.left.as_ref().unwrap())
+                            .resolve_conclusion(right, &mut facts)?;
+                        for fact in facts {
+                            if left_result.is_true() {
+                                RefCell::borrow(&fact).set(left_result);
+                            } else {
+                                RefCell::borrow(&fact).set_value(left_result);
+                            }
+                        }
+                    }
+                    // Return result
                     if left.is_ambiguous() || right.is_ambiguous() {
                         Ok(Resolve::Ambiguous)
                     } else if left.is_true() && right.is_true() {
