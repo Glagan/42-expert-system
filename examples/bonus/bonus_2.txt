@@ -1,7 +1,8 @@
 # This example works
 
-A => B
 C <=> E
 
-=AC
+=C
 ?CE
+
+# CE true if =C or =E

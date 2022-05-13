@@ -5,3 +5,5 @@ C <=> E | F
 
 =AC
 ?BDEF
+
+# BDEF always ambiguous
