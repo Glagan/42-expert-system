@@ -79,14 +79,31 @@ impl Fact {
             return Ok(*self.value.borrow());
         }
         if !self.rules.is_empty() {
+            let mut final_result: Option<Resolve> = None;
             for rule in self.rules.iter() {
-                let result = RefCell::borrow(rule).resolve(path)?;
+                let result = RefCell::borrow(rule).resolve(&self.repr, path)?;
                 if result.is_true() {
                     *RefCell::borrow_mut(&self.value) = result;
                     path.push(format!("{} is {}", self.repr, "true".cyan()));
                     return Ok(result);
+                } else if final_result.is_none() {
+                    final_result = Some(result);
+                } else if final_result.unwrap().is_ambiguous() && result.is_false() {
+                    final_result = Some(result);
                 }
             }
+            path.push(format!(
+                "{} is {}",
+                self.repr,
+                if *self.value.borrow() == Resolve::True {
+                    "true".cyan()
+                } else if *self.value.borrow() == Resolve::Ambiguous {
+                    "ambiguous".purple()
+                } else {
+                    "false".yellow()
+                }
+            ));
+            return Ok(final_result.unwrap());
         }
         path.push(format!(
             "{} is {}",
@@ -194,6 +211,25 @@ impl Node {
         self.fact.is_some()
     }
 
+    pub fn contains_fact(&self, fact: &char) -> bool {
+        if self.has_fact() && RefCell::borrow(self.fact.as_ref().unwrap()).repr == *fact {
+            return true;
+        }
+        if self.has_left() {
+            let has_on_left = RefCell::borrow(self.left.as_ref().unwrap()).contains_fact(fact);
+            if has_on_left {
+                return true;
+            }
+        }
+        if self.has_right() {
+            let has_on_right = RefCell::borrow(self.right.as_ref().unwrap()).contains_fact(fact);
+            if has_on_right {
+                return true;
+            }
+        }
+        return false;
+    }
+
     pub fn has_left(&self) -> bool {
         self.left.is_some()
     }
@@ -282,7 +318,7 @@ impl Node {
         }
     }
 
-    pub fn resolve(&self, path: &mut Vec<String>) -> Result<Resolve, String> {
+    pub fn resolve(&self, for_query: &char, path: &mut Vec<String>) -> Result<Resolve, String> {
         if *self.visited.borrow() {
             return Err(format!("Infinite rule {}", self));
         }
@@ -299,7 +335,8 @@ impl Node {
             path.push(self.to_string());
             let result = match op {
                 Operator::Implies => {
-                    let result = RefCell::borrow(self.left.as_ref().unwrap()).resolve(path)?;
+                    let result =
+                        RefCell::borrow(self.left.as_ref().unwrap()).resolve(for_query, path)?;
                     if result.is_true() {
                         let mut facts: Vec<Rc<RefCell<Fact>>> = vec![];
                         let result = RefCell::borrow(self.right.as_ref().unwrap())
@@ -320,46 +357,54 @@ impl Node {
                     }
                 }
                 Operator::IfAndOnlyIf => {
-                    let left = RefCell::borrow(self.left.as_ref().unwrap()).resolve(path)?;
-                    let right = RefCell::borrow(self.right.as_ref().unwrap()).resolve(path)?;
-                    // Resolve right
-                    if left.is_true() {
-                        let mut facts: Vec<Rc<RefCell<Fact>>> = vec![];
-                        let right_result = RefCell::borrow(self.right.as_ref().unwrap())
-                            .resolve_conclusion(left, &mut facts)?;
-                        for fact in facts {
+                    // Resolve left if for_query is on the right
+                    if RefCell::borrow(self.right.as_ref().unwrap()).contains_fact(for_query) {
+                        self.print_short();
+                        let left = RefCell::borrow(self.left.as_ref().unwrap())
+                            .resolve(for_query, path)?;
+                        if left.is_true() {
+                            let mut facts: Vec<Rc<RefCell<Fact>>> = vec![];
+                            self.print_short();
+                            let right_result = RefCell::borrow(self.right.as_ref().unwrap())
+                                .resolve_conclusion(left, &mut facts)?;
                             if right_result.is_true() {
-                                RefCell::borrow(&fact).set(right_result);
+                                for fact in facts {
+                                    RefCell::borrow(&fact).set(Resolve::True);
+                                }
+                                Ok(Resolve::True)
                             } else {
-                                RefCell::borrow(&fact).set_value(right_result);
+                                Ok(right_result)
                             }
+                        } else {
+                            Ok(left)
                         }
                     }
-                    // Resolve left
-                    if right.is_true() {
-                        let mut facts: Vec<Rc<RefCell<Fact>>> = vec![];
-                        let left_result = RefCell::borrow(self.left.as_ref().unwrap())
-                            .resolve_conclusion(right, &mut facts)?;
-                        for fact in facts {
+                    // -- else resolve right if for_query is on the left
+                    else {
+                        let right = RefCell::borrow(self.right.as_ref().unwrap())
+                            .resolve(for_query, path)?;
+                        if right.is_true() {
+                            let mut facts: Vec<Rc<RefCell<Fact>>> = vec![];
+                            let left_result = RefCell::borrow(self.left.as_ref().unwrap())
+                                .resolve_conclusion(right, &mut facts)?;
                             if left_result.is_true() {
-                                RefCell::borrow(&fact).set(left_result);
+                                for fact in facts {
+                                    RefCell::borrow(&fact).set(Resolve::True);
+                                }
+                                Ok(Resolve::True)
                             } else {
-                                RefCell::borrow(&fact).set_value(left_result);
+                                Ok(left_result)
                             }
+                        } else {
+                            Ok(right)
                         }
-                    }
-                    // Return result
-                    if left.is_ambiguous() || right.is_ambiguous() {
-                        Ok(Resolve::Ambiguous)
-                    } else if left.is_true() && right.is_true() {
-                        Ok(Resolve::True)
-                    } else {
-                        Ok(Resolve::False)
                     }
                 }
                 Operator::And => {
-                    let left = RefCell::borrow(self.left.as_ref().unwrap()).resolve(path)?;
-                    let right = RefCell::borrow(self.right.as_ref().unwrap()).resolve(path)?;
+                    let left =
+                        RefCell::borrow(self.left.as_ref().unwrap()).resolve(for_query, path)?;
+                    let right =
+                        RefCell::borrow(self.right.as_ref().unwrap()).resolve(for_query, path)?;
                     if left.is_ambiguous() || right.is_ambiguous() {
                         Ok(Resolve::Ambiguous)
                     } else if left.is_true() && right.is_true() {
@@ -369,8 +414,10 @@ impl Node {
                     }
                 }
                 Operator::Or => {
-                    let left = RefCell::borrow(self.left.as_ref().unwrap()).resolve(path)?;
-                    let right = RefCell::borrow(self.right.as_ref().unwrap()).resolve(path)?;
+                    let left =
+                        RefCell::borrow(self.left.as_ref().unwrap()).resolve(for_query, path)?;
+                    let right =
+                        RefCell::borrow(self.right.as_ref().unwrap()).resolve(for_query, path)?;
                     if left.is_ambiguous() || right.is_ambiguous() {
                         Ok(Resolve::Ambiguous)
                     } else if left.is_true() || right.is_true() {
@@ -380,8 +427,10 @@ impl Node {
                     }
                 }
                 Operator::Xor => {
-                    let left = RefCell::borrow(self.left.as_ref().unwrap()).resolve(path)?;
-                    let right = RefCell::borrow(self.right.as_ref().unwrap()).resolve(path)?;
+                    let left =
+                        RefCell::borrow(self.left.as_ref().unwrap()).resolve(for_query, path)?;
+                    let right =
+                        RefCell::borrow(self.right.as_ref().unwrap()).resolve(for_query, path)?;
                     if left.is_ambiguous() || right.is_ambiguous() {
                         Ok(Resolve::Ambiguous)
                     } else if (left.is_true() && right.is_false())
@@ -393,14 +442,15 @@ impl Node {
                     }
                 }
                 Operator::Not => {
-                    let left = RefCell::borrow(self.left.as_ref().unwrap()).resolve(path)?;
+                    let left =
+                        RefCell::borrow(self.left.as_ref().unwrap()).resolve(for_query, path)?;
                     Ok(left.not())
                 }
             };
             *RefCell::borrow_mut(&self.visited) = false;
             return result;
         } else if self.has_left() {
-            let result = RefCell::borrow(self.left.as_ref().unwrap()).resolve(path)?;
+            let result = RefCell::borrow(self.left.as_ref().unwrap()).resolve(for_query, path)?;
             *RefCell::borrow_mut(&self.visited) = false;
             return Ok(result);
         }
