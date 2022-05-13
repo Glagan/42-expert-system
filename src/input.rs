@@ -472,15 +472,16 @@ impl Input {
             if self.initial_facts.contains(symbol) {
                 self.warnings
                     .push(format!("Duplicate initial fact for symbol {}", symbol));
-            } else if !self.initial_facts.contains(symbol) {
+            } else {
                 self.initial_facts.push(*symbol);
-                RefCell::borrow_mut(&self.get_or_insert_fact(symbol)).set(Resolve::True);
             }
             if !self.facts.contains_key(symbol) {
                 self.warnings
                     .push(format!("Unused Initial fact {}", symbol));
                 RefCell::borrow_mut(&self.get_or_insert_fact(symbol)).set(Resolve::True);
             }
+            // Always set the value to True if called from reparse
+            RefCell::borrow_mut(&self.get_or_insert_fact(symbol)).set(Resolve::True);
         }
         Ok(())
     }

@@ -63,6 +63,12 @@ impl Fact {
         *RefCell::borrow_mut(&self.value) = value;
     }
 
+    pub fn cleanup(&self) {
+        for rule in self.rules.iter() {
+            RefCell::borrow(rule).cleanup()
+        }
+    }
+
     pub fn resolve(&self, path: &mut Vec<String>) -> Result<Resolve, String> {
         if *self.resolved.borrow() {
             path.push(format!(
@@ -318,6 +324,18 @@ impl Node {
         }
     }
 
+    pub fn cleanup(&self) {
+        if *self.visited.borrow() {
+            *RefCell::borrow_mut(&self.visited) = false;
+        }
+        if self.has_left() {
+            RefCell::borrow(self.left.as_ref().unwrap()).cleanup();
+        }
+        if self.has_right() {
+            RefCell::borrow(self.right.as_ref().unwrap()).cleanup();
+        }
+    }
+
     pub fn resolve(&self, for_query: &char, path: &mut Vec<String>) -> Result<Resolve, String> {
         if *self.visited.borrow() {
             return Err(format!("Infinite rule {}", self));
@@ -359,12 +377,10 @@ impl Node {
                 Operator::IfAndOnlyIf => {
                     // Resolve left if for_query is on the right
                     if RefCell::borrow(self.right.as_ref().unwrap()).contains_fact(for_query) {
-                        self.print_short();
                         let left = RefCell::borrow(self.left.as_ref().unwrap())
                             .resolve(for_query, path)?;
                         if left.is_true() {
                             let mut facts: Vec<Rc<RefCell<Fact>>> = vec![];
-                            self.print_short();
                             let right_result = RefCell::borrow(self.right.as_ref().unwrap())
                                 .resolve_conclusion(left, &mut facts)?;
                             if right_result.is_true() {

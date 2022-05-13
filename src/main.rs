@@ -1,6 +1,9 @@
 use clap::{arg, command};
 use colored::Colorize;
-use std::io::{self, Write};
+use std::{
+    cell::RefCell,
+    io::{self, Write},
+};
 
 pub mod input;
 use input::Input;
@@ -58,13 +61,8 @@ fn main() {
             for query in input.queries.clone().iter() {
                 // Resolve the current state
                 let mut path: Vec<String> = vec![];
-                let result = input
-                    .facts
-                    .get(query)
-                    .unwrap()
-                    .as_ref()
-                    .borrow()
-                    .resolve(&mut path);
+                let fact = RefCell::borrow(input.facts.get(query).unwrap().as_ref());
+                let result = fact.resolve(&mut path);
                 if visualize {
                     path.iter()
                         .map(|path| println!("{}  {}", "?".purple().on_black(), path))
@@ -84,6 +82,7 @@ fn main() {
                         }
                     );
                 } else {
+                    fact.cleanup();
                     println!(
                         "{}{} {}",
                         "?".normal().on_purple(),
@@ -111,6 +110,9 @@ fn main() {
                     // Resolve all of the current queries
                     if command == "e" || command == "exec" {
                         input.reset();
+                        input.show_rules();
+                        input.show_initial_facts();
+                        input.show_queries();
                         search_command = false;
                     }
                     // Show the current rules, initial facts and queries
