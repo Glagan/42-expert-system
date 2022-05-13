@@ -307,7 +307,10 @@ impl Node {
                         for fact in facts {
                             if result.is_true() {
                                 RefCell::borrow(&fact).set(result);
-                            } else {
+                            } else if !*RefCell::borrow(&fact).resolved.borrow()
+                                || (result.is_false()
+                                    && RefCell::borrow(&fact).value.borrow().is_ambiguous())
+                            {
                                 RefCell::borrow(&fact).set_value(result);
                             }
                         }
@@ -413,10 +416,8 @@ impl Node {
         if self.fact.is_some() {
             facts.push(Rc::clone(self.fact.as_ref().unwrap()));
             if self.operator_eq(&Operator::Not) {
-                RefCell::borrow(self.fact.as_ref().unwrap()).set_value(result.not());
                 return Ok(result.not());
             }
-            RefCell::borrow(self.fact.as_ref().unwrap()).set_value(result);
             return Ok(result);
         } else if let Some(op) = &self.operator {
             let result = match op {
