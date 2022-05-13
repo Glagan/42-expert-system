@@ -87,15 +87,23 @@ impl Fact {
         if !self.rules.is_empty() {
             let mut final_result: Option<Resolve> = None;
             for rule in self.rules.iter() {
-                let result = RefCell::borrow(rule).resolve(&self.repr, path)?;
-                if result.is_true() {
-                    *RefCell::borrow_mut(&self.value) = result;
-                    path.push(format!("{} is {}", self.repr, "true".cyan()));
-                    return Ok(result);
-                } else if final_result.is_none() {
-                    final_result = Some(result);
-                } else if final_result.unwrap().is_ambiguous() && result.is_false() {
-                    final_result = Some(result);
+                let result = RefCell::borrow(rule).resolve(&self.repr, path);
+                if let Ok(result) = result {
+                    if result.is_true() {
+                        *RefCell::borrow_mut(&self.value) = result;
+                        path.push(format!("{} is {}", self.repr, "true".cyan()));
+                        return Ok(result);
+                    } else if final_result.is_none() {
+                        final_result = Some(result);
+                    } else if final_result.unwrap().is_ambiguous() && result.is_false() {
+                        final_result = Some(result);
+                    }
+                } else if self.rules.len() == 1
+                    && RefCell::borrow(rule).operator_eq(&Operator::IfAndOnlyIf)
+                {
+                    return Ok(Resolve::False);
+                } else {
+                    return result;
                 }
             }
             path.push(format!(

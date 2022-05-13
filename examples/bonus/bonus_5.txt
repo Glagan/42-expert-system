@@ -1,0 +1,10 @@
+# This example works
+
+A <=> B | C
+A => B
+A => C
+
+=
+?BC
+
+# BC true if =A
