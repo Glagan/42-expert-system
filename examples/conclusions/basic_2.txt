@@ -1,0 +1,9 @@
+# This example works
+
+A => C | D
+A => E + (C | D)
+
+=A
+?CD
+
+# CD always ambiguous

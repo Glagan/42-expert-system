@@ -1,0 +1,13 @@
+# This example works
+
+A + B => C
+C ^ D => E
+# E true if C and !D or D and !C
+E | F => G
+(G + H) ^ (I | J) => K
+# K true if G + H and !I or !J, or I or J and !(G and H)
+
+=ABH
+?K
+
+# K true if =ABH, =I or =J

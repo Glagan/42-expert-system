@@ -1,0 +1,16 @@
+# This example works
+
+B => A
+D + E => B
+G + H => F
+I + J => G
+G => H
+L + M => K
+O + P => L + N
+N => M
+
+=DEIJP
+?AFKP
+
+# AFKP true with =DEIJOP
+# AFP true and K false with =DEIJP

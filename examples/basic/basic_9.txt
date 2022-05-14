@@ -1,0 +1,10 @@
+# This example works
+
+(A | B) | (C | D) => E
+(G | H) + (C | D) => F
+
+=CG
+?EF
+
+# E true
+# F true

@@ -1,0 +1,10 @@
+# This example works
+
+A => C | D
+A => C
+C => D
+
+=A
+?CD
+
+# CD true if =A

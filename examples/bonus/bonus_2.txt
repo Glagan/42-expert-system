@@ -1,0 +1,8 @@
+# This example works
+
+C <=> E
+
+=C
+?CE
+
+# CE true if =C or =E

@@ -2,5 +2,7 @@
 
 A => !B
 
-=A
+=
 ?B
+
+# B true if =A else false

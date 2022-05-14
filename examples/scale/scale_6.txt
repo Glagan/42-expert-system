@@ -1,0 +1,21 @@
+# This example works
+
+A | B + C => E
+(F | G) + H => E
+
+=
+?E
+
+# E false if =
+
+# E true if =A
+# E false if =B
+# E false if =C
+# E true if =AC
+# E true if =BC
+
+# E false if =F
+# E false if =G
+# E false if =H
+# E true if =FH
+# E true if =GH

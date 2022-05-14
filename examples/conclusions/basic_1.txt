@@ -1,0 +1,10 @@
+# This example works
+
+A => C + D
+A => (B + E) + F
+
+=A
+?CDBEF
+
+# CD true if =A
+# BEF true if =A

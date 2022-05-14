@@ -1,0 +1,9 @@
+# This example works
+
+A => B
+B => A
+
+=
+?AB
+
+# A and B true if either =A or =B

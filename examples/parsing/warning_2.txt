@@ -1,7 +1,6 @@
 # This example "works" but has an infinite rule
 
 A => B
-B => A
 
-=
-?AB
+=A
+?C # Query for missing fact warning
