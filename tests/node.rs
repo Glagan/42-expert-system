@@ -1285,3 +1285,143 @@ fn resolved_if_and_only_if_3() {
     assert!(query_result.is_ok());
     assert!(query_result.unwrap().is_true());
 }
+
+#[test]
+fn multiple_if_and_only_if_1() {
+    let mut input = Input::new();
+    let result = input.parse_content("A <=> B\nB <=> C\n=\n?ABC");
+    assert!(result.is_ok());
+    let mut path: Vec<String> = vec![];
+    let query_result = input
+        .facts
+        .get(input.queries.first().unwrap())
+        .unwrap()
+        .as_ref()
+        .borrow()
+        .resolve(&mut path);
+    assert!(query_result.is_ok());
+    assert!(query_result.unwrap().is_false());
+    let query_result = input
+        .facts
+        .get(input.queries.get(1).unwrap())
+        .unwrap()
+        .as_ref()
+        .borrow()
+        .resolve(&mut path);
+    assert!(query_result.is_ok());
+    assert!(query_result.unwrap().is_false());
+    let query_result = input
+        .facts
+        .get(input.queries.last().unwrap())
+        .unwrap()
+        .as_ref()
+        .borrow()
+        .resolve(&mut path);
+    assert!(query_result.is_ok());
+    assert!(query_result.unwrap().is_false());
+}
+
+#[test]
+fn multiple_if_and_only_if_2() {
+    let mut input = Input::new();
+    let result = input.parse_content("A <=> B\nB <=> C\n=A\n?ABC");
+    assert!(result.is_ok());
+    let mut path: Vec<String> = vec![];
+    let query_result = input
+        .facts
+        .get(input.queries.first().unwrap())
+        .unwrap()
+        .as_ref()
+        .borrow()
+        .resolve(&mut path);
+    assert!(query_result.is_ok());
+    assert!(query_result.unwrap().is_true());
+    let query_result = input
+        .facts
+        .get(input.queries.get(1).unwrap())
+        .unwrap()
+        .as_ref()
+        .borrow()
+        .resolve(&mut path);
+    assert!(query_result.is_ok());
+    assert!(query_result.unwrap().is_true());
+    let query_result = input
+        .facts
+        .get(input.queries.last().unwrap())
+        .unwrap()
+        .as_ref()
+        .borrow()
+        .resolve(&mut path);
+    assert!(query_result.is_ok());
+    assert!(query_result.unwrap().is_true());
+}
+
+#[test]
+fn multiple_if_and_only_if_3() {
+    let mut input = Input::new();
+    let result = input.parse_content("A <=> B\nB <=> C\n=B\n?ABC");
+    assert!(result.is_ok());
+    let mut path: Vec<String> = vec![];
+    let query_result = input
+        .facts
+        .get(input.queries.first().unwrap())
+        .unwrap()
+        .as_ref()
+        .borrow()
+        .resolve(&mut path);
+    assert!(query_result.is_ok());
+    assert!(query_result.unwrap().is_true());
+    let query_result = input
+        .facts
+        .get(input.queries.get(1).unwrap())
+        .unwrap()
+        .as_ref()
+        .borrow()
+        .resolve(&mut path);
+    assert!(query_result.is_ok());
+    assert!(query_result.unwrap().is_true());
+    let query_result = input
+        .facts
+        .get(input.queries.last().unwrap())
+        .unwrap()
+        .as_ref()
+        .borrow()
+        .resolve(&mut path);
+    assert!(query_result.is_ok());
+    assert!(query_result.unwrap().is_true());
+}
+
+#[test]
+fn multiple_if_and_only_if_4() {
+    let mut input = Input::new();
+    let result = input.parse_content("A <=> B\nB <=> C\n=C\n?ABC");
+    assert!(result.is_ok());
+    let mut path: Vec<String> = vec![];
+    let query_result = input
+        .facts
+        .get(input.queries.first().unwrap())
+        .unwrap()
+        .as_ref()
+        .borrow()
+        .resolve(&mut path);
+    assert!(query_result.is_ok());
+    assert!(query_result.unwrap().is_true());
+    let query_result = input
+        .facts
+        .get(input.queries.get(1).unwrap())
+        .unwrap()
+        .as_ref()
+        .borrow()
+        .resolve(&mut path);
+    assert!(query_result.is_ok());
+    assert!(query_result.unwrap().is_true());
+    let query_result = input
+        .facts
+        .get(input.queries.last().unwrap())
+        .unwrap()
+        .as_ref()
+        .borrow()
+        .resolve(&mut path);
+    assert!(query_result.is_ok());
+    assert!(query_result.unwrap().is_true());
+}

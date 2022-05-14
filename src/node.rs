@@ -86,7 +86,16 @@ impl Fact {
         }
         if !self.rules.is_empty() {
             let mut final_result: Option<Resolve> = None;
-            for rule in self.rules.iter() {
+            let rules_len = self.rules.len();
+            for (index, rule) in self.rules.iter().enumerate() {
+                // Skip infinite rules for Operator::IfAndOnlyIf if there is multiple rules that *could* resolve
+                if *RefCell::borrow(rule).visited.borrow()
+                    && rules_len > 1
+                    && index + 1 != rules_len
+                {
+                    continue;
+                }
+                // Resolve the rule
                 let result = RefCell::borrow(rule).resolve(&self.repr, path);
                 if let Ok(result) = result {
                     if result.is_true() {
@@ -98,9 +107,9 @@ impl Fact {
                     } else if final_result.unwrap().is_ambiguous() && result.is_false() {
                         final_result = Some(result);
                     }
-                } else if self.rules.len() == 1
-                    && RefCell::borrow(rule).operator_eq(&Operator::IfAndOnlyIf)
-                {
+                }
+                // Infinite IfAndOnlyIf implications resolve to false
+                else if RefCell::borrow(rule).operator_eq(&Operator::IfAndOnlyIf) {
                     return Ok(Resolve::False);
                 } else {
                     return result;
