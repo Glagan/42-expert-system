@@ -102,9 +102,9 @@ impl Fact {
                         *RefCell::borrow_mut(&self.value) = result;
                         path.push(format!("{} is {}", self.repr, "true".cyan()));
                         return Ok(result);
-                    } else if final_result.is_none() {
-                        final_result = Some(result);
-                    } else if final_result.unwrap().is_ambiguous() && result.is_false() {
+                    } else if final_result.is_none()
+                        || (final_result.unwrap().is_ambiguous() && result.is_false())
+                    {
                         final_result = Some(result);
                     }
                 }
@@ -250,7 +250,7 @@ impl Node {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     pub fn has_left(&self) -> bool {
