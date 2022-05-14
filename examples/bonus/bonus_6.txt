@@ -1,0 +1,9 @@
+# This example works
+
+A <=> B
+B <=> C
+
+=C
+?ABC
+
+# ABC true if =A or =B or =C
